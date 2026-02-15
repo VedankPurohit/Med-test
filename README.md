@@ -1,58 +1,65 @@
-# MRI Planning Trainer MVP
+# MRI Planning Trainer (Next.js + TypeScript)
 
-Simple browser-based core simulator for MRI prescription training.
+This project is now a Next.js App Router application with typed domain modules for MRI planning training.
 
-## What this MVP includes
+## Tech
 
-- Case selection: `Brain` or `Spine`
-- 3-view localizer interface: `Axial`, `Sagittal`, `Coronal`
-- Protocol selection per case
-- Parameter editing: `TR`, `TE`, `FOV`, `Slices`, `Slice Thickness`, `Slice Gap`
-- Shared 3D planning box model (`center + size + rx/ry/rz`)
-- 3D wireframe projection to each localizer view
-- Drag-to-position in 2 views (axial + sagittal), coronal derived automatically
-- Scoring feedback (`PASS`/`NOT YET`) from protocol-specific position, coverage, angulation, and parameters
-- Localizer image loading from `assets/localizers/<case>/<view>.*`
-- Per-view image upload overrides (stored in browser local storage)
-- Instructor calibration mode: save/replace target box and parameters per protocol
-- Score export to JSON for audit/review
+- Next.js (App Router)
+- React
+- TypeScript (strict)
 
 ## Run
 
-No build step is required.
+```bash
+npm install
+npm run dev
+```
 
-1. Open `/Users/vedank/Github/Med test/index.html` in your browser.
-2. Select case and protocol.
-3. Drag planning box in axial/sagittal.
-4. Tune coverage/angles/parameters.
-5. Click `Check Planning`.
+Open: `http://localhost:3000`
 
-## Instructor workflow
+## Architecture
 
-1. Enable `Instructor mode`.
-2. Select case + protocol.
-3. Place the box and set parameters to your clinical preference.
-4. Click `Save Current As Target`.
-5. Ask students to plan against this calibrated target.
+- `src/features/planner/types/planner.ts`
+  - Core types for cases, protocols, localizer sets, box geometry, params, scoring.
+- `src/features/planner/data/planner-config.ts`
+  - Case/protocol/localizer configuration.
+  - Add more brain/spine localizer sets and protocols here.
+- `src/features/planner/lib/geometry.ts`
+  - Shared 3D geometry, projection, hit-testing, drag math.
+- `src/features/planner/lib/scoring.ts`
+  - Scoring model and calibration target fallback merge.
+- `src/features/planner/lib/storage.ts`
+  - Local storage persistence for uploads and calibration targets.
+- `src/features/planner/lib/media.ts`
+  - Image upload parsing, triptych splitting, JSON export.
+- `src/features/planner/hooks/usePlannerState.ts`
+  - Main planner state orchestration and actions.
+- `src/features/planner/components/PlannerShell.tsx`
+  - Feature UI shell.
+- `src/features/planner/components/LocalizerCanvas.tsx`
+  - Canvas rendering and pointer interaction.
 
-Calibrations are stored in browser local storage and applied per `case:protocol`.
+## Supported features (migrated)
 
-## Localizer image sources
+- Case selection (`Brain`, `Spine`)
+- Protocol selection
+- Localizer set selection (extensible)
+- 3 synchronized planning views (`Axial`, `Sagittal`, `Coronal`)
+- 3D prescription state projected as 2D slab outlines
+- Drag interactions in axial/sagittal with shared model update
+- Parameter controls:
+  - `TR`, `TE`, `FOV`, `Slices`, `Slice Thickness`, `Slice Gap`
+- Coverage/angulation controls
+- Per-view uploads
+- 3-panel screenshot import (`Sag|Cor|Ax` and other orders)
+- Instructor calibration mode
+- Score evaluation + JSON export
 
-For each case/view, the app loads images in this priority:
+## Localizer images
 
-1. Uploaded image from UI (persisted in browser storage).
-2. File from `/Users/vedank/Github/Med test/assets/localizers`.
-3. Built-in synthetic sketch fallback.
+Current defaults are served from:
 
-Default sample image files are already included in `/Users/vedank/Github/Med test/assets/localizers`.
-Those defaults are generated from open 3D MRI volumes (see `/Users/vedank/Github/Med test/assets/localizers/SOURCES.md`).
+- `public/localizers/brain/default/*.png`
+- `public/localizers/spine/default/*.png`
 
-To use your own real localizers, replace those files with de-identified PNG/JPG/WebP/SVG (or upload from the UI).
-
-## Next realistic upgrade path
-
-1. Add DICOM parsing and orientation handling (e.g., Cornerstone + dicom-parser).
-2. Add landmarks and target plane definitions from experts.
-3. Score with tighter anatomy-aware metrics.
-4. Save attempts and track learner progress over time.
+To add more image sets for a case, create additional folders under `public/localizers/<case>/<set-id>/...` and register them in `planner-config.ts`.

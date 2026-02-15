@@ -85,21 +85,6 @@ const VIEW_IDS = ["axial", "sagittal", "coronal"];
 const LOCALIZER_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg"];
 const LOCAL_STORAGE_KEY = "mriTrainerUploadedLocalizersV1";
 const CALIBRATION_STORAGE_KEY = "mriTrainerCalibratedTargetsV1";
-const EDGE_INDEXES = [
-  [0, 1],
-  [0, 2],
-  [0, 4],
-  [1, 3],
-  [1, 5],
-  [2, 3],
-  [2, 6],
-  [3, 7],
-  [4, 5],
-  [4, 6],
-  [5, 7],
-  [6, 7],
-];
-
 const state = {
   caseId: null,
   protocolId: null,
@@ -150,6 +135,8 @@ const els = {
   uploadAxial: document.getElementById("upload-axial"),
   uploadSagittal: document.getElementById("upload-sagittal"),
   uploadCoronal: document.getElementById("upload-coronal"),
+  uploadTriptych: document.getElementById("upload-triptych"),
+  triptychOrder: document.getElementById("triptych-order"),
   statusAxial: document.getElementById("status-axial"),
   statusSagittal: document.getElementById("status-sagittal"),
   statusCoronal: document.getElementById("status-coronal"),
@@ -227,6 +214,7 @@ function setupEventListeners() {
   els.uploadAxial.addEventListener("change", (event) => handleUpload(event, "axial"));
   els.uploadSagittal.addEventListener("change", (event) => handleUpload(event, "sagittal"));
   els.uploadCoronal.addEventListener("change", (event) => handleUpload(event, "coronal"));
+  els.uploadTriptych.addEventListener("change", handleTriptychUpload);
 
   els.clearCaseImagesBtn.addEventListener("click", async () => {
     if (!state.caseId) {
@@ -536,12 +524,16 @@ function drawProjectedBox(ctx, box, viewId, style) {
     ctx.setLineDash([7, 5]);
   }
 
-  for (const [i, j] of EDGE_INDEXES) {
-    const a = geometry.screenPoints[i];
-    const b = geometry.screenPoints[j];
+  const hullScreen = geometry.hull.map((p) =>
+    normToScreen(p, ctx.canvas.width, ctx.canvas.height)
+  );
+  if (hullScreen.length >= 3) {
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
+    ctx.moveTo(hullScreen[0].x, hullScreen[0].y);
+    for (let i = 1; i < hullScreen.length; i += 1) {
+      ctx.lineTo(hullScreen[i].x, hullScreen[i].y);
+    }
+    ctx.closePath();
     ctx.stroke();
   }
 
@@ -1122,6 +1114,9 @@ function clearUploadInputValues() {
   els.uploadAxial.value = "";
   els.uploadSagittal.value = "";
   els.uploadCoronal.value = "";
+  if (els.uploadTriptych) {
+    els.uploadTriptych.value = "";
+  }
 }
 
 function loadUploadedLocalizerMap() {
@@ -1229,6 +1224,89 @@ async function handleUpload(event, viewId) {
     els.feedback.innerHTML = `<p class="warn">Upload failed for ${viewId}. Try a different image file.</p>`;
     event.target.value = "";
   }
+}
+
+async function handleTriptychUpload(event) {
+  if (!state.caseId) {
+    event.target.value = "";
+    return;
+  }
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    const sourceImage = await loadImage(dataUrl);
+    if (!sourceImage) {
+      els.feedback.innerHTML = `<p class="warn">Unable to read 3-panel screenshot.</p>`;
+      event.target.value = "";
+      return;
+    }
+
+    const mapping = getTriptychMapping(els.triptychOrder.value);
+    const panelDataUrls = splitTriptychPanels(sourceImage);
+
+    for (let i = 0; i < 3; i += 1) {
+      const viewId = mapping[i];
+      const panelDataUrl = panelDataUrls[i];
+      await setUploadedLocalizerForView(state.caseId, viewId, panelDataUrl);
+    }
+
+    updateUploadStatuses();
+    renderAll();
+    els.feedback.innerHTML = `<p>Imported 3-panel screenshot for ${state.caseId} (${els.triptychOrder.options[els.triptychOrder.selectedIndex].text}).</p>`;
+    event.target.value = "";
+  } catch {
+    els.feedback.innerHTML = `<p class="warn">Failed to import 3-panel screenshot. Use a single-row 3-view image.</p>`;
+    event.target.value = "";
+  }
+}
+
+function getTriptychMapping(order) {
+  if (order === "ax-cor-sag") {
+    return ["axial", "coronal", "sagittal"];
+  }
+  if (order === "cor-sag-ax") {
+    return ["coronal", "sagittal", "axial"];
+  }
+  return ["sagittal", "coronal", "axial"];
+}
+
+function splitTriptychPanels(image) {
+  const panelWidth = Math.floor(image.width / 3);
+  const panelHeight = image.height;
+  if (panelWidth < 60 || panelHeight < 60) {
+    throw new Error("Triptych image too small");
+  }
+
+  const panelDataUrls = [];
+  for (let i = 0; i < 3; i += 1) {
+    const sx = i * panelWidth;
+    const sw = i === 2 ? image.width - sx : panelWidth;
+    const side = Math.min(sw, panelHeight);
+    const cropX = sx + Math.max(0, Math.floor((sw - side) / 2));
+    const cropY = Math.max(0, Math.floor((panelHeight - side) / 2));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 320;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, cropX, cropY, side, side, 0, 0, 320, 320);
+    panelDataUrls.push(canvas.toDataURL("image/png"));
+  }
+  return panelDataUrls;
+}
+
+async function setUploadedLocalizerForView(caseId, viewId, dataUrl) {
+  const image = await loadImage(dataUrl);
+  if (!image) {
+    throw new Error(`Unable to decode panel for ${viewId}`);
+  }
+  state.uploadedData[caseId][viewId] = dataUrl;
+  persistUploadedLocalizerMap();
+  setLocalizer(caseId, viewId, image, "uploaded");
 }
 
 function readFileAsDataUrl(file) {

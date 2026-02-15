@@ -104,6 +104,19 @@
                 <input id="upload-coronal" type="file" accept="image/*" />
                 <small id="status-coronal">Source: fallback sketch</small>
               </label>
+              <label>
+                3-panel screenshot (single row)
+                <input id="upload-triptych" type="file" accept="image/*" />
+                <small>Use a row like: sagittal | coronal | axial</small>
+              </label>
+              <label>
+                Panel order
+                <select id="triptych-order">
+                  <option value="sag-cor-ax">Sagittal | Coronal | Axial</option>
+                  <option value="ax-cor-sag">Axial | Coronal | Sagittal</option>
+                  <option value="cor-sag-ax">Coronal | Sagittal | Axial</option>
+                </select>
+              </label>
             </div>
             <div class="actions">
               <button id="clear-case-images-btn" class="secondary">Clear Uploaded Images</button>
@@ -134,7 +147,7 @@
         <section class="views card">
           <h3>3 Localizer Views</h3>
           <p class="hint">
-            Drag the planning box wireframe in <strong>Axial</strong> and <strong>Sagittal</strong>. Coronal updates automatically from the shared 3D model.
+            Drag the planning slab outline in <strong>Axial</strong> and <strong>Sagittal</strong>. Coronal updates automatically from the shared 3D model.
           </p>
           <div class="views-grid">
             <figure>
