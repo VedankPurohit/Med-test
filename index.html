@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MRI Planning Trainer MVP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <h1>MRI Planning Trainer</h1>
+        <p>Pick a case, prescribe the scan box, and get scored.</p>
+      </header>
+
+      <section id="case-step" class="card">
+        <h2>1) Select Case</h2>
+        <div class="case-grid">
+          <button class="case-btn" data-case="brain">
+            <strong>Brain</strong>
+            <span>Head localizers + neuro protocol targets</span>
+          </button>
+          <button class="case-btn" data-case="spine">
+            <strong>Spine</strong>
+            <span>Spinal localizers + spine protocol targets</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="planner-step" class="hidden">
+        <div class="toolbar card">
+          <div>
+            <h2>2) Plan Scan</h2>
+            <p id="selected-case-label"></p>
+          </div>
+          <button id="change-case-btn" class="secondary">Change Case</button>
+        </div>
+
+        <div class="layout-grid">
+          <section class="card">
+            <h3>Protocol</h3>
+            <label for="protocol-select">Sequence:</label>
+            <select id="protocol-select"></select>
+          </section>
+
+          <section class="card">
+            <h3>Parameters</h3>
+            <div class="param-grid">
+              <label>TR (ms) <input id="param-tr" type="number" /></label>
+              <label>TE (ms) <input id="param-te" type="number" /></label>
+              <label>FOV (mm) <input id="param-fov" type="number" /></label>
+              <label>Slices <input id="param-slices" type="number" min="1" step="1" /></label>
+              <label>Slice Thickness (mm) <input id="param-thickness" type="number" min="0" step="0.1" /></label>
+              <label>Slice Gap (mm) <input id="param-gap" type="number" min="0" step="0.1" /></label>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>Coverage + Angulation</h3>
+            <div class="slider-grid">
+              <label>
+                Coverage X
+                <input id="size-x" type="range" min="0.2" max="1.8" step="0.01" />
+              </label>
+              <label>
+                Coverage Y
+                <input id="size-y" type="range" min="0.2" max="1.8" step="0.01" />
+              </label>
+              <label>
+                Coverage Z
+                <input id="size-z" type="range" min="0.2" max="1.8" step="0.01" />
+              </label>
+              <label>
+                Axial Tilt (deg)
+                <input id="angle-axial" type="range" min="-45" max="45" step="1" />
+              </label>
+              <label>
+                Sagittal Tilt (deg)
+                <input id="angle-sagittal" type="range" min="-45" max="45" step="1" />
+              </label>
+              <label>
+                Coronal Tilt (deg)
+                <input id="angle-coronal" type="range" min="-45" max="45" step="1" />
+              </label>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>Localizer Images (Current Case)</h3>
+            <p class="hint">Use defaults from <code>assets/localizers</code> or upload your own.</p>
+            <div class="upload-grid">
+              <label>
+                Axial image
+                <input id="upload-axial" type="file" accept="image/*" />
+                <small id="status-axial">Source: fallback sketch</small>
+              </label>
+              <label>
+                Sagittal image
+                <input id="upload-sagittal" type="file" accept="image/*" />
+                <small id="status-sagittal">Source: fallback sketch</small>
+              </label>
+              <label>
+                Coronal image
+                <input id="upload-coronal" type="file" accept="image/*" />
+                <small id="status-coronal">Source: fallback sketch</small>
+              </label>
+            </div>
+            <div class="actions">
+              <button id="clear-case-images-btn" class="secondary">Clear Uploaded Images</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>Instructor Calibration</h3>
+            <div class="param-grid">
+              <label class="inline-check">
+                <input id="instructor-mode" type="checkbox" />
+                Instructor mode
+              </label>
+              <label class="inline-check">
+                <input id="show-target" type="checkbox" />
+                Always show target overlay
+              </label>
+            </div>
+            <p id="calibration-status" class="hint">Calibration: default protocol targets.</p>
+            <div class="actions">
+              <button id="save-target-btn" class="secondary">Save Current As Target</button>
+              <button id="reset-target-btn" class="secondary">Reset Protocol Target</button>
+              <button id="export-score-btn" class="secondary">Export Last Score JSON</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="views card">
+          <h3>3 Localizer Views</h3>
+          <p class="hint">
+            Drag the planning box wireframe in <strong>Axial</strong> and <strong>Sagittal</strong>. Coronal updates automatically from the shared 3D model.
+          </p>
+          <div class="views-grid">
+            <figure>
+              <figcaption>Axial (editable)</figcaption>
+              <canvas id="view-axial" width="320" height="320"></canvas>
+            </figure>
+            <figure>
+              <figcaption>Sagittal (editable)</figcaption>
+              <canvas id="view-sagittal" width="320" height="320"></canvas>
+            </figure>
+            <figure>
+              <figcaption>Coronal (derived)</figcaption>
+              <canvas id="view-coronal" width="320" height="320"></canvas>
+            </figure>
+          </div>
+        </section>
+
+        <section class="card actions">
+          <button id="check-btn">Check Planning</button>
+          <button id="reset-btn" class="secondary">Reset</button>
+        </section>
+
+        <section class="card">
+          <h3>Feedback</h3>
+          <div id="feedback">
+            Choose case/protocol and start planning.
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
