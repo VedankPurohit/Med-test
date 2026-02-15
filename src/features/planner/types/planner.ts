@@ -48,6 +48,7 @@ export type ProtocolConfig = {
   target: ProtocolTarget;
   initial: ProtocolTarget;
   tolerances: ProtocolTolerance;
+  clinicalNotes?: string[];
 };
 
 export type LocalizerSet = {
