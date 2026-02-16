@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CASE_MAP, CASES } from "@/features/planner/data/planner-config";
 import {
+  getFlatGeometry,
   clamp,
   getProjectedGeometry,
   pointInPolygon,
@@ -18,6 +19,7 @@ import {
   writeJsonStorage
 } from "@/features/planner/lib/storage";
 import {
+  BoxRenderMode,
   CalibrationMap,
   CaseConfig,
   CaseId,
@@ -139,21 +141,37 @@ export const usePlannerState = () => {
     setStatusKind("info");
   }, []);
 
-  const changeParam = useCallback((key: keyof PlannerParams, value: number) => {
-    if (!Number.isFinite(value)) {
-      return;
-    }
-
-    setParams((current) => {
-      if (!current) {
-        return current;
+  const changeParam = useCallback(
+    (key: string, value: number) => {
+      if (!Number.isFinite(value)) {
+        return;
       }
-      return {
-        ...current,
-        [key]: key === "Slices" ? Math.max(1, Math.round(value)) : value
-      };
-    });
-  }, []);
+
+      const spec = currentProtocol?.parameterSpecs.find((entry) => String(entry.key) === key);
+      const min = spec?.min;
+      const max = spec?.max;
+      const rounded = spec?.integer ? Math.round(value) : value;
+      const bounded =
+        min !== undefined && max !== undefined
+          ? clamp(rounded, min, max)
+          : min !== undefined
+            ? Math.max(min, rounded)
+            : max !== undefined
+              ? Math.min(max, rounded)
+              : rounded;
+
+      setParams((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          [key]: bounded
+        };
+      });
+    },
+    [currentProtocol]
+  );
 
   const changeSize = useCallback((axis: keyof PlannerBox["size"], value: number) => {
     setBox((current) => {
@@ -186,12 +204,12 @@ export const usePlannerState = () => {
   }, []);
 
   const beginDrag = useCallback(
-    (viewId: ViewId, point: Point2) => {
+    (viewId: ViewId, point: Point2, mode: BoxRenderMode = "cube3d") => {
       if (!box) {
         return false;
       }
 
-      const geometry = getProjectedGeometry(box, viewId);
+      const geometry = mode === "flat2d" ? getFlatGeometry(box, viewId) : getProjectedGeometry(box, viewId);
       const hit = pointInPolygon(point, geometry.hull) || squaredDistance(point, geometry.center2D) <= 0.02;
       if (!hit) {
         return false;

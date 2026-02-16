@@ -5,24 +5,16 @@ import { LocalizerCanvas } from "@/features/planner/components/LocalizerCanvas";
 import { usePlannerState } from "@/features/planner/hooks/usePlannerState";
 import { loadImage, readFileAsDataUrl, splitTriptychPanels, triptychOrderToViews } from "@/features/planner/lib/media";
 import { VIEW_CONFIG } from "@/features/planner/lib/geometry";
-import { PlannerParams, ViewId } from "@/features/planner/types/planner";
-
-const PARAM_KEYS: Array<{ key: keyof PlannerParams; label: string; min?: number; step?: number }> = [
-  { key: "TR", label: "TR (ms)", min: 0, step: 1 },
-  { key: "TE", label: "TE (ms)", min: 0, step: 1 },
-  { key: "FOV", label: "FOV (mm)", min: 0, step: 1 },
-  { key: "Slices", label: "Slices", min: 1, step: 1 },
-  { key: "SliceThickness", label: "Slice Thickness (mm)", min: 0, step: 0.1 },
-  { key: "SliceGap", label: "Slice Gap (mm)", min: 0, step: 0.1 }
-];
+import { BoxRenderMode, ViewId } from "@/features/planner/types/planner";
 
 export const PlannerShell = () => {
   const planner = usePlannerState();
   const [triptychOrder, setTriptychOrder] = useState("sag-cor-ax");
+  const [boxRenderMode, setBoxRenderMode] = useState<BoxRenderMode>("flat2d");
 
   const showTarget = planner.showTarget || planner.showTargetAlways || planner.instructorMode;
 
-  const handleParamChange = (key: keyof PlannerParams) => (event: ChangeEvent<HTMLInputElement>) => {
+  const handleParamChange = (key: string) => (event: ChangeEvent<HTMLInputElement>) => {
     const value = Number(event.target.value);
     planner.changeParam(key, value);
   };
@@ -63,7 +55,7 @@ export const PlannerShell = () => {
 
     await Promise.all(
       mapping.map(async (viewId, index) => {
-        planner.setUploadedView(planner.caseId as "brain" | "spine", viewId, panels[index]);
+        planner.setUploadedView(planner.caseId!, viewId, panels[index]);
       })
     );
   };
@@ -116,7 +108,7 @@ export const PlannerShell = () => {
                   Case: <strong>{planner.caseConfig?.label}</strong>
                 </p>
               </div>
-              <button onClick={() => planner.selectCase(planner.caseId as "brain" | "spine")}>Restart Case</button>
+              <button onClick={() => planner.selectCase(planner.caseId!)}>Restart Case</button>
             </div>
 
             <div className="grid grid-3">
@@ -162,18 +154,23 @@ export const PlannerShell = () => {
           <section className="card">
             <h3>Parameters</h3>
             <div className="grid grid-3">
-              {PARAM_KEYS.map((item) => (
-                <label key={item.key}>
-                  {item.label}
+              {(planner.currentProtocol?.parameterSpecs ?? []).map((item) => {
+                const key = String(item.key);
+                const label = item.unit ? `${item.label} (${item.unit})` : item.label;
+                return (
+                <label key={key}>
+                  {label}
                   <input
                     type="number"
                     min={item.min}
+                    max={item.max}
                     step={item.step}
-                    value={planner.params?.[item.key] ?? ""}
-                    onChange={handleParamChange(item.key)}
+                    value={planner.params?.[key] ?? ""}
+                    onChange={handleParamChange(key)}
                   />
                 </label>
-              ))}
+                );
+              })}
             </div>
           </section>
 
@@ -316,6 +313,18 @@ export const PlannerShell = () => {
           <section className="card">
             <h3>3 Localizer Views</h3>
             <p>Drag in axial and sagittal. Coronal is derived from shared 3D prescription.</p>
+            <div className="row">
+              <label>
+                Box View
+                <select
+                  value={boxRenderMode}
+                  onChange={(event) => setBoxRenderMode(event.target.value as BoxRenderMode)}
+                >
+                  <option value="cube3d">3D Cube Wireframe</option>
+                  <option value="flat2d">Flat 2D Box</option>
+                </select>
+              </label>
+            </div>
             <div className="grid grid-3">
               {(["axial", "sagittal", "coronal"] as ViewId[]).map((viewId) => (
                 <figure key={viewId}>
@@ -324,6 +333,7 @@ export const PlannerShell = () => {
                   </figcaption>
                   <LocalizerCanvas
                     viewId={viewId}
+                    boxRenderMode={boxRenderMode}
                     imageSrc={planner.getImageSource(viewId)}
                     box={planner.box}
                     targetBox={planner.currentProtocol?.target ?? null}
@@ -355,10 +365,15 @@ export const PlannerShell = () => {
                   {planner.lastScore.componentScores.parametersPercent}%
                 </p>
                 <p>
-                  Target params: TR {planner.lastScore.target.params.TR}, TE {planner.lastScore.target.params.TE},
-                  FOV {planner.lastScore.target.params.FOV}, Slices {planner.lastScore.target.params.Slices},
-                  Thickness {planner.lastScore.target.params.SliceThickness}, Gap {planner.lastScore.target.params.SliceGap}
+                  Matched target: {planner.lastScore.matchedTargetKind} ({planner.lastScore.matchedTargetIndex})
                 </p>
+                <p>
+                  Target params:{" "}
+                  {(planner.currentProtocol?.parameterSpecs ?? [])
+                    .map((spec) => `${spec.label} ${planner.lastScore?.target.params[String(spec.key)] ?? "n/a"}`)
+                    .join(", ")}
+                </p>
+                <p>Feedback: {planner.lastScore.feedback.join(" | ")}</p>
               </div>
             )}
           </section>

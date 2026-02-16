@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { getProjectedGeometry, normToScreen, pointerToNorm } from "@/features/planner/lib/geometry";
+import { getFlatGeometry, getProjectedGeometry, normToScreen, pointerToNorm } from "@/features/planner/lib/geometry";
 import { loadImage } from "@/features/planner/lib/media";
-import { PlannerBox, Point2, ViewId } from "@/features/planner/types/planner";
+import { BoxRenderMode, PlannerBox, Point2, ViewId } from "@/features/planner/types/planner";
 
 type LocalizerCanvasProps = {
   viewId: ViewId;
+  boxRenderMode: BoxRenderMode;
   imageSrc: string;
   box: PlannerBox | null;
   targetBox: PlannerBox | null;
   showTarget: boolean;
   editable: boolean;
-  onBeginDrag: (viewId: ViewId, point: Point2) => boolean;
+  onBeginDrag: (viewId: ViewId, point: Point2, mode: BoxRenderMode) => boolean;
   onMoveDrag: (viewId: ViewId, point: Point2) => void;
   onEndDrag: () => void;
 };
@@ -22,6 +23,7 @@ const CANVAS_SIZE = 320;
 
 export const LocalizerCanvas = ({
   viewId,
+  boxRenderMode,
   imageSrc,
   box,
   targetBox,
@@ -69,7 +71,7 @@ export const LocalizerCanvas = ({
     drawGrid(ctx, CANVAS_SIZE, CANVAS_SIZE);
 
     if (showTarget && targetBox) {
-      drawProjectedOutline(ctx, targetBox, viewId, {
+      drawOutlineForMode(ctx, targetBox, viewId, boxRenderMode, {
         color: "#f4df9d",
         lineWidth: 1.5,
         dashed: true,
@@ -78,7 +80,7 @@ export const LocalizerCanvas = ({
     }
 
     if (box) {
-      drawProjectedOutline(ctx, box, viewId, {
+      drawOutlineForMode(ctx, box, viewId, boxRenderMode, {
         color: editable ? "#57fff1" : "#ffe49d",
         lineWidth: editable ? 2.8 : 2,
         dashed: false,
@@ -93,7 +95,7 @@ export const LocalizerCanvas = ({
       ctx.font = "12px sans-serif";
       ctx.fillText("Derived from shared 3D prescription", 10, CANVAS_SIZE - 9);
     }
-  }, [box, editable, image, showTarget, targetBox, viewId]);
+  }, [box, boxRenderMode, editable, image, showTarget, targetBox, viewId]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!editable || !canvasRef.current) {
@@ -108,7 +110,7 @@ export const LocalizerCanvas = ({
       CANVAS_SIZE
     );
 
-    const started = onBeginDrag(viewId, point);
+    const started = onBeginDrag(viewId, point, boxRenderMode);
     if (!started) {
       return;
     }
@@ -169,6 +171,21 @@ type OutlineStyle = {
   alpha: number;
 };
 
+const CUBE_EDGE_INDEX_PAIRS: Array<[number, number]> = [
+  [0, 1],
+  [0, 2],
+  [0, 4],
+  [1, 3],
+  [1, 5],
+  [2, 3],
+  [2, 6],
+  [3, 7],
+  [4, 5],
+  [4, 6],
+  [5, 7],
+  [6, 7]
+];
+
 const drawProjectedOutline = (
   ctx: CanvasRenderingContext2D,
   box: PlannerBox,
@@ -176,9 +193,10 @@ const drawProjectedOutline = (
   style: OutlineStyle
 ) => {
   const geometry = getProjectedGeometry(box, viewId);
+  const projectedCorners = geometry.projected.map((point) => normToScreen(point, CANVAS_SIZE, CANVAS_SIZE));
   const hull = geometry.hull.map((point) => normToScreen(point, CANVAS_SIZE, CANVAS_SIZE));
 
-  if (hull.length < 3) {
+  if (projectedCorners.length < 8 || hull.length < 3) {
     return;
   }
 
@@ -190,6 +208,20 @@ const drawProjectedOutline = (
     ctx.setLineDash([7, 5]);
   }
 
+  for (const [start, end] of CUBE_EDGE_INDEX_PAIRS) {
+    const startPoint = projectedCorners[start];
+    const endPoint = projectedCorners[end];
+    if (!startPoint || !endPoint) {
+      continue;
+    }
+    ctx.beginPath();
+    ctx.moveTo(startPoint.x, startPoint.y);
+    ctx.lineTo(endPoint.x, endPoint.y);
+    ctx.stroke();
+  }
+
+  // Draw outer hull to improve visibility over noisy localizers.
+  ctx.lineWidth = Math.max(1, style.lineWidth * 0.85);
   ctx.beginPath();
   ctx.moveTo(hull[0].x, hull[0].y);
   for (let index = 1; index < hull.length; index += 1) {
@@ -205,6 +237,58 @@ const drawProjectedOutline = (
   ctx.fillStyle = style.color;
   ctx.fill();
   ctx.restore();
+};
+
+const drawFlatOutline = (
+  ctx: CanvasRenderingContext2D,
+  box: PlannerBox,
+  viewId: ViewId,
+  style: OutlineStyle
+) => {
+  const geometry = getFlatGeometry(box, viewId);
+  const corners = geometry.projected.map((point) => normToScreen(point, CANVAS_SIZE, CANVAS_SIZE));
+
+  if (corners.length < 3) {
+    return;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = style.alpha;
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = style.lineWidth;
+  if (style.dashed) {
+    ctx.setLineDash([7, 5]);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  for (let index = 1; index < corners.length; index += 1) {
+    ctx.lineTo(corners[index].x, corners[index].y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+  const center = normToScreen(geometry.center2D, CANVAS_SIZE, CANVAS_SIZE);
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = style.color;
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawOutlineForMode = (
+  ctx: CanvasRenderingContext2D,
+  box: PlannerBox,
+  viewId: ViewId,
+  mode: BoxRenderMode,
+  style: OutlineStyle
+) => {
+  if (mode === "flat2d") {
+    drawFlatOutline(ctx, box, viewId, style);
+    return;
+  }
+  drawProjectedOutline(ctx, box, viewId, style);
 };
 
 const drawBackground = (

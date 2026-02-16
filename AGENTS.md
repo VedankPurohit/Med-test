@@ -30,3 +30,15 @@
 - Keep business logic in testable modules.
 - Keep components thin and focused on composition.
 - Preserve backward compatibility in data structures when possible.
+
+## Decision Logging
+
+- All important architecture choices must be recorded in `doc/ARCHITECTURE_DECISIONS.md`.
+- All defaults and alternatives (especially easy-to-change UX behavior) must be recorded in `doc/CHOICES_AND_ALTERNATIVES.md`.
+- For easy-to-change UI behavior, pick a sensible default and document the other options instead of blocking core progress.
+
+## Core Data Principles
+
+- Prefer typed data registries and pure functions over class-heavy inheritance for protocol modeling.
+- Protocol definitions must include explicit parameter specs, scoring/tolerance rules, and reviewable notes.
+- Core scoring and validation logic must be deterministic and covered by tests.

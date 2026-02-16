@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { computeScore, deepClone, withFallbackTarget } from "@/features/planner/lib/scoring";
-import type { PlannerBox, PlannerParams, ProtocolConfig, ProtocolTarget } from "@/features/planner/types/planner";
+import {
+  PlannerBox,
+  PlannerParams,
+  ProtocolConfig,
+  ProtocolParameterSpec,
+  ProtocolTarget
+} from "@/features/planner/types/planner";
 
-const params = (TR: number, TE: number, FOV: number, Slices: number, SliceThickness: number, SliceGap: number): PlannerParams => ({
+const params = (
+  TR: number,
+  TE: number,
+  FOV: number,
+  Slices: number,
+  SliceThickness: number,
+  SliceGap: number
+): PlannerParams => ({
   TR,
   TE,
   FOV,
@@ -10,6 +23,15 @@ const params = (TR: number, TE: number, FOV: number, Slices: number, SliceThickn
   SliceThickness,
   SliceGap
 });
+
+const parameterSpecs: ProtocolParameterSpec[] = [
+  { key: "TR", label: "TR", min: 0, step: 1, weight: 1 },
+  { key: "TE", label: "TE", min: 0, step: 1, weight: 1 },
+  { key: "FOV", label: "FOV", min: 0, step: 1, weight: 1 },
+  { key: "Slices", label: "Slices", min: 1, step: 1, integer: true, weight: 1 },
+  { key: "SliceThickness", label: "Slice Thickness", min: 0, step: 0.1, weight: 1 },
+  { key: "SliceGap", label: "Slice Gap", min: 0, step: 0.1, weight: 1 }
+];
 
 const protocol: ProtocolConfig = {
   id: "test_protocol",
@@ -20,13 +42,22 @@ const protocol: ProtocolConfig = {
     rotation: { rx: 4, ry: -3, rz: 8 },
     params: params(3000, 90, 220, 20, 4, 0.5)
   },
+  acceptedTargets: [
+    {
+      center: { x: 0.25, y: 0.25, z: 0.25 },
+      size: { x: 0.75, y: 0.66, z: 0.5 },
+      rotation: { rx: 5, ry: -2, rz: 9 },
+      params: params(3050, 92, 220, 20, 4, 0.5)
+    }
+  ],
   initial: {
     center: { x: 0.2, y: 0.2, z: 0.2 },
     size: { x: 0.5, y: 0.5, z: 0.5 },
     rotation: { rx: 0, ry: 0, rz: 0 },
     params: params(2500, 70, 260, 14, 5, 1.2)
   },
-  tolerances: { center: 0.2, size: 0.2, rotation: 15, param: 0.2 }
+  tolerances: { center: 0.2, size: 0.2, rotation: 15, param: 0.2 },
+  parameterSpecs
 };
 
 describe("scoring core", () => {
@@ -41,6 +72,26 @@ describe("scoring core", () => {
     expect(score.finalScorePercent).toBe(100);
     expect(score.pass).toBe(true);
     expect(score.componentScores.positionPercent).toBe(100);
+    expect(score.scoreSchemaVersion).toBe(2);
+    expect(score.matchedTargetIndex).toBe(0);
+  });
+
+  it("matches accepted alternate target when closer", () => {
+    const alt = protocol.acceptedTargets?.[0];
+    if (!alt) {
+      throw new Error("Missing accepted target in test setup.");
+    }
+
+    const attemptBox: PlannerBox = {
+      center: deepClone(alt.center),
+      size: deepClone(alt.size),
+      rotation: deepClone(alt.rotation)
+    };
+
+    const score = computeScore(protocol, attemptBox, deepClone(alt.params), false, "brain");
+    expect(score.finalScorePercent).toBeGreaterThanOrEqual(95);
+    expect(score.matchedTargetKind).toBe("accepted");
+    expect(score.matchedTargetIndex).toBe(1);
   });
 
   it("fails clearly when attempt is far from target", () => {
@@ -56,6 +107,7 @@ describe("scoring core", () => {
     expect(score.pass).toBe(false);
     expect(score.rawErrors.center).toBeGreaterThan(0.5);
     expect(score.calibratedTargetUsed).toBe(true);
+    expect(score.feedback.length).toBeGreaterThan(0);
   });
 
   it("merges fallback target fields when calibration is partial", () => {
