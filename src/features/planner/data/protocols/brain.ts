@@ -1,5 +1,15 @@
 import { ProtocolConfig } from "@/features/planner/types/planner";
-import { makeParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
+import { DEFAULT_PARAMETER_SPECS, makeParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
+
+const STANDARD_SPECS = DEFAULT_PARAMETER_SPECS;
+const FLAIR_SPECS = [
+  ...DEFAULT_PARAMETER_SPECS,
+  { key: "TI", label: "TI", unit: "ms", min: 0, step: 1, weight: 1 }
+];
+const DWI_SPECS = [
+  ...DEFAULT_PARAMETER_SPECS,
+  { key: "bValue", label: "b-value", unit: "s/mm2", min: 0, step: 50, integer: true, weight: 1 }
+];
 
 export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
   makeProtocol({
@@ -18,6 +28,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       makeParams(850, 24, 250, 16, 5, 1.2)
     ),
     tolerances: { center: 0.24, size: 0.22, rotation: 18, param: 0.22 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Keep midline orientation through corpus callosum and brainstem.",
       "Cover from frontal sinus margin through occipital pole."
@@ -38,7 +49,16 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       { rx: 8, ry: -5, rz: -8 },
       makeParams(3000, 70, 240, 18, 4, 1.2)
     ),
+    acceptedTargets: [
+      makeTarget(
+        { x: 0.01, y: -0.06, z: 0.13 },
+        { x: 0.93, y: 0.75, z: 0.55 },
+        { rx: -7, ry: 2, rz: 8 },
+        makeParams(4800, 100, 220, 24, 5, 0.5)
+      )
+    ],
     tolerances: { center: 0.22, size: 0.21, rotation: 16, param: 0.22 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Prescribe parallel to AC-PC region for supratentorial coverage.",
       "Ensure full cortical and ventricular coverage without excessive neck inclusion."
@@ -60,6 +80,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       makeParams(900, 25, 250, 18, 4, 1.0)
     ),
     tolerances: { center: 0.22, size: 0.2, rotation: 16, param: 0.2 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Maintain standard axial plane alignment for pre-contrast T1 comparisons.",
       "Avoid inferior neck inclusion while preserving full supratentorial coverage."
@@ -72,18 +93,19 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       { x: 0.03, y: -0.04, z: 0.11 },
       { x: 0.95, y: 0.78, z: 0.58 },
       { rx: -5, ry: 2, rz: 9 },
-      makeParams(9000, 120, 230, 26, 5, 0.5)
+      { ...makeParams(9000, 120, 230, 26, 5, 0.5), TI: 2500 }
     ),
     initial: makeTarget(
       { x: -0.18, y: 0.15, z: 0.29 },
       { x: 0.68, y: 0.57, z: 0.44 },
       { rx: 6, ry: -6, rz: -9 },
-      makeParams(7000, 90, 250, 20, 4, 1.0)
+      { ...makeParams(7000, 90, 250, 20, 4, 1.0), TI: 1800 }
     ),
     tolerances: { center: 0.21, size: 0.2, rotation: 15, param: 0.2 },
+    parameterSpecs: FLAIR_SPECS,
     clinicalNotes: [
       "FLAIR axial slab usually mirrors T2 axial plane with robust supratentorial coverage.",
-      "TI is not modeled yet; the trainer currently scores TR, TE, FOV, and slice geometry only."
+      "This protocol includes TI scoring in addition to core geometric parameters."
     ]
   }),
   makeProtocol({
@@ -93,15 +115,16 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       { x: 0.03, y: -0.04, z: 0.1 },
       { x: 0.94, y: 0.78, z: 0.55 },
       { rx: -5, ry: 1, rz: 8 },
-      makeParams(3200, 85, 230, 26, 5, 0.0)
+      { ...makeParams(3200, 85, 230, 26, 5, 0.0), bValue: 1000 }
     ),
     initial: makeTarget(
       { x: -0.2, y: 0.17, z: 0.31 },
       { x: 0.65, y: 0.56, z: 0.4 },
       { rx: 7, ry: -5, rz: -9 },
-      makeParams(2500, 70, 250, 18, 4, 1.0)
+      { ...makeParams(2500, 70, 250, 18, 4, 1.0), bValue: 800 }
     ),
     tolerances: { center: 0.2, size: 0.2, rotation: 15, param: 0.2 },
+    parameterSpecs: DWI_SPECS,
     clinicalNotes: [
       "DWI axial should avoid inferior non-brain inclusion while covering whole brain.",
       "Keep slab aligned with routine axial brain plane for diffusion comparability."
@@ -123,6 +146,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       makeParams(70, 18, 240, 30, 3, 0.8)
     ),
     tolerances: { center: 0.22, size: 0.2, rotation: 15, param: 0.2 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Thin contiguous slices are preferred for venous and microhemorrhage conspicuity.",
       "Keep slab parallel to routine axial brain acquisition for correlation."
@@ -144,6 +168,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       makeParams(850, 20, 250, 18, 5, 1.0)
     ),
     tolerances: { center: 0.23, size: 0.2, rotation: 17, param: 0.22 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Coronal SE T1 should center through temporal horns and mesial temporal structures.",
       "Avoid strong obliquity unless protocol specifically requests it."
@@ -165,6 +190,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       makeParams(3200, 78, 250, 18, 5, 1.0)
     ),
     tolerances: { center: 0.23, size: 0.2, rotation: 17, param: 0.22 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Coronal T2 should include temporal lobes through vertex with symmetric coverage.",
       "Tilt only as needed to maintain consistent bilateral anatomy coverage."
@@ -186,6 +212,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       makeParams(3200, 70, 260, 16, 5, 1.2)
     ),
     tolerances: { center: 0.24, size: 0.22, rotation: 18, param: 0.22 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Midline sagittal orientation should track corpus callosum and posterior fossa profile.",
       "Ensure anterior frontal pole to occipital pole coverage."
@@ -207,6 +234,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       makeParams(920, 24, 250, 18, 4, 1.0)
     ),
     tolerances: { center: 0.22, size: 0.2, rotation: 16, param: 0.2 },
+    parameterSpecs: STANDARD_SPECS,
     clinicalNotes: [
       "Planning geometry should mirror pre-contrast axial T1 for interval comparison.",
       "Maintain full intracranial coverage in post-contrast series."

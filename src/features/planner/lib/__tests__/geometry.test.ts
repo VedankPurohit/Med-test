@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   angleDiff,
   clamp,
+  getFlatGeometry,
   getProjectedGeometry,
   pointInPolygon,
   pointerToNorm,
@@ -50,6 +51,14 @@ describe("geometry core", () => {
 
     const outside = { x: 0.95, y: 0.95 };
     expect(pointInPolygon(outside, geometry.hull)).toBe(false);
+  });
+
+  it("builds flat-view rectangle geometry", () => {
+    const geometry = getFlatGeometry(baseBox, "axial");
+    expect(geometry.projected.length).toBe(4);
+    expect(geometry.hull.length).toBe(4);
+    expect(geometry.center2D.x).toBeCloseTo(0, 6);
+    expect(geometry.center2D.y).toBeCloseTo(0, 6);
   });
 
   it("computes squared distance and wrapped angle difference", () => {

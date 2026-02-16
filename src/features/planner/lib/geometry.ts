@@ -161,6 +161,56 @@ export const getProjectedGeometry = (box: PlannerBox, viewId: ViewId) => {
   return { projected, hull, center2D };
 };
 
+const FLAT_VIEW_AXES: Record<ViewId, [keyof Vector3, keyof Vector3]> = {
+  axial: ["x", "y"],
+  sagittal: ["y", "z"],
+  coronal: ["x", "z"]
+};
+
+const inPlaneAngle = (box: PlannerBox, viewId: ViewId): number => {
+  if (viewId === "axial") {
+    return toRadians(box.rotation.rz);
+  }
+  if (viewId === "sagittal") {
+    return toRadians(box.rotation.rx);
+  }
+  return toRadians(box.rotation.ry);
+};
+
+const rotate2D = (point: Point2, radians: number): Point2 => {
+  const c = Math.cos(radians);
+  const s = Math.sin(radians);
+  return {
+    x: point.x * c - point.y * s,
+    y: point.x * s + point.y * c
+  };
+};
+
+export const getFlatGeometry = (box: PlannerBox, viewId: ViewId) => {
+  const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
+  const center2D = projectPoint(box.center, viewId);
+  const halfA = box.size[axisA] / 2;
+  const halfB = box.size[axisB] / 2;
+  const angle = inPlaneAngle(box, viewId);
+
+  const localCorners: Point2[] = [
+    { x: -halfA, y: -halfB },
+    { x: halfA, y: -halfB },
+    { x: halfA, y: halfB },
+    { x: -halfA, y: halfB }
+  ];
+
+  const projected = localCorners.map((corner) => {
+    const rotated = rotate2D(corner, angle);
+    return {
+      x: rotated.x + center2D.x,
+      y: rotated.y + center2D.y
+    };
+  });
+
+  return { projected, hull: projected, center2D };
+};
+
 export const squaredDistance = (a: Point2, b: Point2): number =>
   (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
 

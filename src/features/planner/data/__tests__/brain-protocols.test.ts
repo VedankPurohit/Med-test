@@ -25,6 +25,7 @@ describe("brain protocols", () => {
 
     for (const protocol of BRAIN_PROTOCOLS) {
       expect(protocol.label.trim().length).toBeGreaterThan(0);
+      expect(protocol.parameterSpecs.length).toBeGreaterThan(0);
     }
   });
 
@@ -79,5 +80,11 @@ describe("brain protocols", () => {
     const swi = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_swi_axial");
     expect(swi?.target.params.TR).toBeLessThanOrEqual(100);
     expect(swi?.target.params.SliceThickness).toBeLessThanOrEqual(2.5);
+
+    const flairWithTi = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_t2_flair_axial");
+    expect(flairWithTi?.target.params.TI).toBeGreaterThanOrEqual(1500);
+
+    const dwiWithBValue = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_dwi_axial");
+    expect(dwiWithBValue?.target.params.bValue).toBeGreaterThanOrEqual(800);
   });
 });
