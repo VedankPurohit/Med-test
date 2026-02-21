@@ -34,7 +34,9 @@ export const writeJsonStorage = (key: string, value: unknown): void => {
 
 export const createEmptyUploadMap = (): UploadMap => ({
   brain: { axial: null, sagittal: null, coronal: null },
-  spine: { axial: null, sagittal: null, coronal: null }
+  cspine: { axial: null, sagittal: null, coronal: null },
+  tspine: { axial: null, sagittal: null, coronal: null },
+  lspine: { axial: null, sagittal: null, coronal: null }
 });
 
 export const createEmptyCalibrations = (): CalibrationMap => ({});

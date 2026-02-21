@@ -102,7 +102,7 @@ describe("scoring core", () => {
     };
     const badParams = params(600, 20, 400, 3, 10, 4);
 
-    const score = computeScore(protocol, badBox, badParams, true, "spine");
+    const score = computeScore(protocol, badBox, badParams, true, "cspine");
     expect(score.finalScorePercent).toBeLessThan(40);
     expect(score.pass).toBe(false);
     expect(score.rawErrors.center).toBeGreaterThan(0.5);

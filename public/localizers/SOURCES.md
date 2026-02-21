@@ -25,11 +25,38 @@ Wikimedia Commons by user **511KeV**. All sequences are from the **same patient*
 - sagittal: [MRI Brain T1 Sag (10)](https://commons.wikimedia.org/wiki/File:MRI_Brain_T1_Sag_(10).jpg)
 - coronal: [MRI Brain T2 Cor (13)](https://commons.wikimedia.org/wiki/File:MRI_Brain_T2_Cor_(13).jpg)
 
-## Spine
+## Cervical Spine (cspine)
 
-Spine localizer images are placeholder images from Wikimedia Commons and are
-**not from the same patient**. They will be replaced with matched single-subject data.
+Cervical spine localizer images are user-provided clinical cervical spine MRI scans
+showing axial, sagittal, and coronal views of the cervical spine region.
 
-- axial: [Ligamenta flava Hypertrophie - MRT T2 axial](https://commons.wikimedia.org/wiki/File%3ALigamenta%20flava%20Hypertrophie%20-%20MRT%20T2%20axial.jpg)
-- sagittal: [Lumbar MRI t2-tse-rst-sagittal 08](https://commons.wikimedia.org/wiki/File%3ALumbar%20MRI%20t2-tse-rst-sagittal%2008.jpg)
-- coronal: [Meningeom im Spinalkanal MRT](https://commons.wikimedia.org/wiki/File%3AMeningeom%20im%20Spinalkanal%20MRT.jpg)
+### Localizer Sets
+
+**default** (Cervical Spine Default):
+- axial: User-provided cervical spine axial T2
+- sagittal: User-provided cervical spine sagittal T2
+- coronal: User-provided cervical spine coronal T2
+
+## Thoracic Spine (tspine)
+
+Thoracic spine localizer images are placeholder copies of the cervical spine images.
+Replace with region-appropriate thoracic spine MRI scans.
+
+### Localizer Sets
+
+**default** (Thoracic Spine Default):
+- axial: Placeholder (cervical spine axial T2)
+- sagittal: Placeholder (cervical spine sagittal T2)
+- coronal: Placeholder (cervical spine coronal T2)
+
+## Lumbar Spine (lspine)
+
+Lumbar spine localizer images are placeholder copies of the cervical spine images.
+Replace with region-appropriate lumbar spine MRI scans.
+
+### Localizer Sets
+
+**default** (Lumbar Spine Default):
+- axial: Placeholder (cervical spine axial T2)
+- sagittal: Placeholder (cervical spine sagittal T2)
+- coronal: Placeholder (cervical spine coronal T2)
