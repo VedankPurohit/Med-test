@@ -345,8 +345,7 @@ export const usePlannerState = () => {
             ? currentDrag.angle + Math.PI / 2
             : currentDrag.angle;
           const projected = dx * Math.cos(edgeNormalAngle) + dy * Math.sin(edgeNormalAngle);
-          const delta = projected - currentDrag.initialProjected;
-          const newSize = clamp(currentDrag.initialSize + 2 * Math.abs(delta), 0.2, 1.8);
+          const newSize = clamp(2 * Math.abs(projected), 0.2, 1.8);
           return {
             ...currentBox,
             size: { ...currentBox.size, [currentDrag.sizeAxis]: newSize }
@@ -363,10 +362,8 @@ export const usePlannerState = () => {
           const dy = point.y - center2D.y;
           const projA = dx * Math.cos(currentDrag.angle) + dy * Math.sin(currentDrag.angle);
           const projB = -dx * Math.sin(currentDrag.angle) + dy * Math.cos(currentDrag.angle);
-          const deltaA = Math.abs(projA) - Math.abs(currentDrag.initialProjectedA);
-          const deltaB = Math.abs(projB) - Math.abs(currentDrag.initialProjectedB);
-          const newSizeA = clamp(currentDrag.initialSizeA + 2 * deltaA, 0.2, 1.8);
-          const newSizeB = clamp(currentDrag.initialSizeB + 2 * deltaB, 0.2, 1.8);
+          const newSizeA = clamp(2 * Math.abs(projA), 0.2, 1.8);
+          const newSizeB = clamp(2 * Math.abs(projB), 0.2, 1.8);
           return {
             ...currentBox,
             size: {
