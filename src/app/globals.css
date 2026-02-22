@@ -1,4 +1,7 @@
+@import "tailwindcss";
+
 :root {
+  /* === Legacy planner variables === */
   --bg: #f4f7fb;
   --card: #ffffff;
   --text: #10212f;
@@ -6,20 +9,191 @@
   --line: #d5deea;
   --accent: #00707a;
   --warning: #a45400;
+
+  /* === Chrome / Shell (Light Clinical Theme) === */
+  --chrome-bg: #e8e8ec;
+  --chrome-surface: #f0f0f3;
+  --chrome-surface-hover: #e4e4e8;
+  --chrome-surface-raised: #d8d8dc;
+  --chrome-border: #c0c0c8;
+  --chrome-border-light: #d0d0d8;
+  --chrome-border-bright: #a0a0a8;
+
+  /* === Text === */
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a5e;
+  --text-muted: #7a7a8e;
+  --text-label: #6a6a7e;
+
+  /* === Image Panels (always black) === */
+  --panel-bg: #000000;
+  --panel-border: #a0a0a8;
+
+  /* === Accent: Planning Orange === */
+  --plan-orange: #e89120;
+  --plan-orange-dim: rgba(232, 145, 32, 0.5);
+  --plan-orange-ghost: rgba(232, 145, 32, 0.12);
+
+  /* === Accent: System Blue === */
+  --accent-blue: #2563eb;
+  --accent-blue-dim: rgba(37, 99, 235, 0.1);
+  --accent-blue-strong: rgba(37, 99, 235, 0.2);
+
+  /* === Orientation Axis Colors === */
+  --axis-ap: #3fb950;
+  --axis-rl: #f85149;
+  --axis-fh: #58a6ff;
+
+  /* === Feedback / Status === */
+  --fb-good: #3fb950;
+  --fb-warn: #d29922;
+  --fb-bad: #f85149;
+  --fb-neutral: #8b949e;
+
+  /* === Inputs === */
+  --input-bg: #ffffff;
+  --input-border: #c0c0c8;
+  --input-focus: #2563eb;
+
+  /* === Sidebar === */
+  --sidebar-bg: #f0f0f3;
+  --sidebar-row-hover: #e4e4e8;
+  --sidebar-row-active: rgba(37, 99, 235, 0.12);
+
+  /* === Toolbar === */
+  --toolbar-gradient: linear-gradient(180deg, #f4f4f8 0%, #e8e8ec 100%);
+
+  /* === Glow effects === */
+  --glow-blue: 0 0 6px rgba(37, 99, 235, 0.25);
+  --glow-orange: 0 0 6px rgba(232, 145, 32, 0.25);
+
+  /* === Progress / Track === */
+  --track-bg: #d8d8dc;
+
+  /* === Scrollbar === */
+  --scrollbar-thumb: #c0c0c8;
+  --scrollbar-track: transparent;
+}
+
+@theme inline {
+  --color-background: var(--chrome-bg);
+  --color-foreground: var(--text-primary);
+  --font-mono: var(--font-geist-mono);
 }
 
 * {
-  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 body {
-  margin: 0;
+  background: var(--chrome-bg);
+  color: var(--text-primary);
+  font-family: var(--font-geist-mono), 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+
+/* === Workstation scanline overlay === */
+
+.panel-scanline {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(255, 255, 255, 0.008) 1px,
+    rgba(255, 255, 255, 0.008) 2px
+  );
+  pointer-events: none;
+}
+
+/* === Workstation animations === */
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scan-sweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    rgba(37, 99, 235, 0.04) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-scan-sweep {
+  animation: scan-sweep 1s ease-in-out;
+}
+
+/* =================================================================
+   Legacy planner styles — scoped under .planner-legacy so they
+   don't collide with Tailwind's preflight or utility classes.
+   ================================================================= */
+
+.planner-legacy {
+  overflow: auto;
+  height: 100vh;
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.container {
+.planner-legacy * {
+  box-sizing: border-box;
+}
+
+.planner-legacy .container {
   max-width: 1220px;
   margin: 0 auto;
   padding: 20px;
@@ -27,60 +201,60 @@ body {
   gap: 14px;
 }
 
-.card {
+.planner-legacy .card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
 }
 
-.grid {
+.planner-legacy .grid {
   display: grid;
   gap: 12px;
 }
 
-.grid-3 {
+.planner-legacy .grid-3 {
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
-.row {
+.planner-legacy .row {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.spread {
+.planner-legacy .spread {
   justify-content: space-between;
   align-items: center;
 }
 
-label {
+.planner-legacy label {
   display: grid;
   gap: 6px;
   color: var(--muted);
 }
 
-.inline-check {
+.planner-legacy .inline-check {
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--text);
 }
 
-input,
-select,
-button {
+.planner-legacy input,
+.planner-legacy select,
+.planner-legacy button {
   font: inherit;
 }
 
-input,
-select {
+.planner-legacy input,
+.planner-legacy select {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 7px 9px;
 }
 
-button {
+.planner-legacy button {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #fff;
@@ -89,21 +263,21 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+.planner-legacy button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-figure {
+.planner-legacy figure {
   margin: 0;
 }
 
-figcaption {
+.planner-legacy figcaption {
   margin-bottom: 8px;
   font-weight: 600;
 }
 
-canvas {
+.planner-legacy canvas {
   width: 100%;
   max-width: 320px;
   height: auto;
@@ -112,10 +286,10 @@ canvas {
   background: #111;
 }
 
-small {
+.planner-legacy small {
   font-size: 0.82rem;
 }
 
-.warn {
+.planner-legacy .warn {
   color: var(--warning);
 }
