@@ -342,6 +342,7 @@ export const PlannerShell = () => {
                     onBeginDrag={planner.beginDrag}
                     onMoveDrag={planner.moveDrag}
                     onEndDrag={planner.endDrag}
+                    onHitTest={planner.hitTest}
                   />
                 </figure>
               ))}

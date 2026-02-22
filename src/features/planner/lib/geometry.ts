@@ -1,4 +1,4 @@
-import { PlannerBox, Point2, Rotation3, Vector3, ViewId } from "@/features/planner/types/planner";
+import { HandleId, PlannerBox, Point2, Rotation3, Vector3, ViewId } from "@/features/planner/types/planner";
 
 export const VIEW_CONFIG: Record<
   ViewId,
@@ -161,13 +161,13 @@ export const getProjectedGeometry = (box: PlannerBox, viewId: ViewId) => {
   return { projected, hull, center2D };
 };
 
-const FLAT_VIEW_AXES: Record<ViewId, [keyof Vector3, keyof Vector3]> = {
+export const FLAT_VIEW_AXES: Record<ViewId, [keyof Vector3, keyof Vector3]> = {
   axial: ["x", "y"],
   sagittal: ["y", "z"],
   coronal: ["x", "z"]
 };
 
-const inPlaneAngle = (box: PlannerBox, viewId: ViewId): number => {
+export const inPlaneAngle = (box: PlannerBox, viewId: ViewId): number => {
   if (viewId === "axial") {
     return toRadians(box.rotation.rz);
   }
@@ -177,7 +177,7 @@ const inPlaneAngle = (box: PlannerBox, viewId: ViewId): number => {
   return toRadians(box.rotation.ry);
 };
 
-const rotate2D = (point: Point2, radians: number): Point2 => {
+export const rotate2D = (point: Point2, radians: number): Point2 => {
   const c = Math.cos(radians);
   const s = Math.sin(radians);
   return {
@@ -220,4 +220,105 @@ export const angleDiff = (a: number, b: number): number => {
     diff = 360 - diff;
   }
   return diff;
+};
+
+export const pointToSegmentDistance = (
+  point: Point2,
+  a: Point2,
+  b: Point2
+): { distance: number; t: number } => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+
+  if (lenSq < 1e-12) {
+    const d = Math.sqrt(squaredDistance(point, a));
+    return { distance: d, t: 0 };
+  }
+
+  const t = clamp(((point.x - a.x) * dx + (point.y - a.y) * dy) / lenSq, 0, 1);
+  const closest: Point2 = { x: a.x + t * dx, y: a.y + t * dy };
+  const distance = Math.sqrt(squaredDistance(point, closest));
+  return { distance, t };
+};
+
+export const hitTestFlat = (
+  point: Point2,
+  box: PlannerBox,
+  viewId: ViewId
+): HandleId | null => {
+  const geometry = getFlatGeometry(box, viewId);
+  const corners = geometry.projected;
+  const center2D = geometry.center2D;
+
+  // 1. Corner check (radius 0.06 in normalized space)
+  const cornerThresholdSq = 0.06 * 0.06;
+  for (let i = 0; i < 4; i++) {
+    if (squaredDistance(point, corners[i]) <= cornerThresholdSq) {
+      return { kind: "corner", index: i as 0 | 1 | 2 | 3 };
+    }
+  }
+
+  // 2. Edge check (distance <= 0.04, parametric t in [0.15, 0.85])
+  for (let i = 0; i < 4; i++) {
+    const a = corners[i];
+    const b = corners[(i + 1) % 4];
+    const { distance, t } = pointToSegmentDistance(point, a, b);
+    if (distance <= 0.04 && t >= 0.15 && t <= 0.85) {
+      return { kind: "edge", index: i as 0 | 1 | 2 | 3 };
+    }
+  }
+
+  // 3. Interior check
+  if (pointInPolygon(point, corners) || squaredDistance(point, center2D) <= 0.02) {
+    return { kind: "move" };
+  }
+
+  // 4. Rotation ring check
+  const dist = Math.sqrt(squaredDistance(point, center2D));
+  let maxCornerDist = 0;
+  for (let i = 0; i < 4; i++) {
+    const d = Math.sqrt(squaredDistance(center2D, corners[i]));
+    if (d > maxCornerDist) {
+      maxCornerDist = d;
+    }
+  }
+  const innerRadius = maxCornerDist + 0.02;
+  const outerRadius = maxCornerDist + 0.12;
+  if (dist >= innerRadius && dist <= outerRadius) {
+    return { kind: "rotate" };
+  }
+
+  return null;
+};
+
+export const hitTestCube = (
+  point: Point2,
+  box: PlannerBox,
+  viewId: ViewId
+): HandleId | null => {
+  const geometry = getProjectedGeometry(box, viewId);
+  const center2D = geometry.center2D;
+
+  // Interior check
+  if (pointInPolygon(point, geometry.hull) || squaredDistance(point, center2D) <= 0.02) {
+    return { kind: "move" };
+  }
+
+  // Rotation ring check
+  const dist = Math.sqrt(squaredDistance(point, center2D));
+  let maxCornerDist = 0;
+  for (const corner of geometry.hull) {
+    const d = Math.sqrt(squaredDistance(center2D, corner));
+    if (d > maxCornerDist) {
+      maxCornerDist = d;
+    }
+  }
+  const innerRadius = maxCornerDist + 0.02;
+  const outerRadius = maxCornerDist + 0.12;
+  if (dist >= innerRadius && dist <= outerRadius) {
+    return { kind: "rotate" };
+  }
+
+  return null;
 };
