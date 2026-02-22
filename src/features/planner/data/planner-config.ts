@@ -1,5 +1,7 @@
 import { BRAIN_PROTOCOLS } from "@/features/planner/data/protocols/brain";
-import { SPINE_PROTOCOLS } from "@/features/planner/data/protocols/spine";
+import { CSPINE_PROTOCOLS } from "@/features/planner/data/protocols/cspine";
+import { TSPINE_PROTOCOLS } from "@/features/planner/data/protocols/tspine";
+import { LSPINE_PROTOCOLS } from "@/features/planner/data/protocols/lspine";
 import { validateProtocolConfig } from "@/features/planner/lib/validation";
 import { CaseConfig, CaseId, ViewId } from "@/features/planner/types/planner";
 
@@ -33,16 +35,40 @@ export const CASES: CaseConfig[] = [
     protocols: BRAIN_PROTOCOLS
   },
   {
-    id: "spine",
-    label: "Spine",
+    id: "cspine",
+    label: "Cervical Spine",
     localizerSets: [
       {
         id: "default",
-        label: "Spine Default",
-        views: localizerViews("spine", "default")
+        label: "Cervical Spine Default",
+        views: localizerViews("cspine", "default")
       }
     ],
-    protocols: SPINE_PROTOCOLS
+    protocols: CSPINE_PROTOCOLS
+  },
+  {
+    id: "tspine",
+    label: "Thoracic Spine",
+    localizerSets: [
+      {
+        id: "default",
+        label: "Thoracic Spine Default",
+        views: localizerViews("tspine", "default")
+      }
+    ],
+    protocols: TSPINE_PROTOCOLS
+  },
+  {
+    id: "lspine",
+    label: "Lumbar Spine",
+    localizerSets: [
+      {
+        id: "default",
+        label: "Lumbar Spine Default",
+        views: localizerViews("lspine", "default")
+      }
+    ],
+    protocols: LSPINE_PROTOCOLS
   }
 ];
 

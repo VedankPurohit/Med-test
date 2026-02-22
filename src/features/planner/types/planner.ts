@@ -1,5 +1,5 @@
 export type ViewId = "axial" | "sagittal" | "coronal";
-export type CaseId = "brain" | "spine";
+export type CaseId = "brain" | "cspine" | "tspine" | "lspine";
 export type BoxRenderMode = "flat2d" | "cube3d";
 
 export const STANDARD_PARAMETER_KEYS = [
