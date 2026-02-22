@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CASE_MAP, CASES } from "@/features/planner/data/planner-config";
 import {
+  FLAT_VIEW_AXES,
   getFlatGeometry,
   clamp,
   getProjectedGeometry,
-  pointInPolygon,
-  squaredDistance,
+  hitTestCube,
+  hitTestFlat,
+  inPlaneAngle,
   VIEW_CONFIG
 } from "@/features/planner/lib/geometry";
 import { computeScore, deepClone, withFallbackTarget } from "@/features/planner/lib/scoring";
@@ -23,22 +25,29 @@ import {
   CalibrationMap,
   CaseConfig,
   CaseId,
+  HandleId,
   PlannerBox,
   PlannerParams,
   PlannerScore,
   Point2,
   ProtocolConfig,
+  Rotation3,
   UploadMap,
+  Vector3,
   ViewId
 } from "@/features/planner/types/planner";
 import { downloadJson } from "@/features/planner/lib/media";
 
-type DragState = {
-  viewId: ViewId;
-  axisA: keyof PlannerBox["center"];
-  axisB: keyof PlannerBox["center"];
-  offsetA: number;
-  offsetB: number;
+type DragState =
+  | { mode: "move"; viewId: ViewId; axisA: keyof Vector3; axisB: keyof Vector3; offsetA: number; offsetB: number }
+  | { mode: "resize-edge"; viewId: ViewId; edgeIndex: 0 | 1 | 2 | 3; sizeAxis: keyof Vector3; angle: number; initialSize: number; initialProjected: number }
+  | { mode: "resize-corner"; viewId: ViewId; cornerIndex: 0 | 1 | 2 | 3; sizeAxisA: keyof Vector3; sizeAxisB: keyof Vector3; angle: number; initialSizeA: number; initialSizeB: number; initialProjectedA: number; initialProjectedB: number }
+  | { mode: "rotate"; viewId: ViewId; rotationAxis: keyof Rotation3; initialPointerAngle: number; initialRotationDeg: number };
+
+const ROTATION_AXIS_FOR_VIEW: Record<ViewId, keyof Rotation3> = {
+  axial: "rz",
+  sagittal: "rx",
+  coronal: "ry"
 };
 
 const protocolKey = (caseId: CaseId, protocolId: string): string => `${caseId}:${protocolId}`;
@@ -209,22 +218,96 @@ export const usePlannerState = () => {
         return false;
       }
 
-      const geometry = mode === "flat2d" ? getFlatGeometry(box, viewId) : getProjectedGeometry(box, viewId);
-      const hit = pointInPolygon(point, geometry.hull) || squaredDistance(point, geometry.center2D) <= 0.02;
-      if (!hit) {
+      const handle = mode === "flat2d"
+        ? hitTestFlat(point, box, viewId)
+        : hitTestCube(point, box, viewId);
+
+      if (!handle) {
         return false;
       }
 
-      const [axisA, axisB] = VIEW_CONFIG[viewId].moveAxes;
-      setDrag({
-        viewId,
-        axisA,
-        axisB,
-        offsetA: point.x - box.center[axisA],
-        offsetB: point.y - box.center[axisB]
-      });
+      if (handle.kind === "move") {
+        const [axisA, axisB] = VIEW_CONFIG[viewId].moveAxes;
+        setDrag({
+          mode: "move",
+          viewId,
+          axisA,
+          axisB,
+          offsetA: point.x - box.center[axisA],
+          offsetB: point.y - box.center[axisB]
+        });
+        return true;
+      }
 
-      return true;
+      if (handle.kind === "edge" && mode === "flat2d") {
+        const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
+        const angle = inPlaneAngle(box, viewId);
+        // Edges 0,2 (horizontal in local space) control axisB
+        // Edges 1,3 (vertical in local space) control axisA
+        const sizeAxis = handle.index % 2 === 0 ? axisB : axisA;
+        const center2D = { x: box.center[axisA], y: box.center[axisB] };
+        // Project pointer onto edge normal direction
+        const edgeNormalAngle = handle.index % 2 === 0
+          ? angle + Math.PI / 2  // horizontal edge -> perpendicular is vertical
+          : angle;               // vertical edge -> perpendicular is horizontal
+        const dx = point.x - center2D.x;
+        const dy = point.y - center2D.y;
+        const projected = dx * Math.cos(edgeNormalAngle) + dy * Math.sin(edgeNormalAngle);
+
+        setDrag({
+          mode: "resize-edge",
+          viewId,
+          edgeIndex: handle.index,
+          sizeAxis,
+          angle,
+          initialSize: box.size[sizeAxis],
+          initialProjected: projected
+        });
+        return true;
+      }
+
+      if (handle.kind === "corner" && mode === "flat2d") {
+        const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
+        const angle = inPlaneAngle(box, viewId);
+        const center2D = { x: box.center[axisA], y: box.center[axisB] };
+        const dx = point.x - center2D.x;
+        const dy = point.y - center2D.y;
+        // Project onto both local axes (rotated)
+        const projA = dx * Math.cos(angle) + dy * Math.sin(angle);
+        const projB = -dx * Math.sin(angle) + dy * Math.cos(angle);
+
+        setDrag({
+          mode: "resize-corner",
+          viewId,
+          cornerIndex: handle.index,
+          sizeAxisA: axisA,
+          sizeAxisB: axisB,
+          angle,
+          initialSizeA: box.size[axisA],
+          initialSizeB: box.size[axisB],
+          initialProjectedA: projA,
+          initialProjectedB: projB
+        });
+        return true;
+      }
+
+      if (handle.kind === "rotate") {
+        const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
+        const center2D = { x: box.center[axisA], y: box.center[axisB] };
+        const pointerAngle = Math.atan2(point.y - center2D.y, point.x - center2D.x);
+        const rotAxis = ROTATION_AXIS_FOR_VIEW[viewId];
+
+        setDrag({
+          mode: "rotate",
+          viewId,
+          rotationAxis: rotAxis,
+          initialPointerAngle: pointerAngle,
+          initialRotationDeg: box.rotation[rotAxis]
+        });
+        return true;
+      }
+
+      return false;
     },
     [box]
   );
@@ -235,20 +318,81 @@ export const usePlannerState = () => {
         return currentDrag;
       }
 
-      setBox((currentBox) => {
-        if (!currentBox) {
-          return currentBox;
-        }
-
-        return {
-          ...currentBox,
-          center: {
-            ...currentBox.center,
-            [currentDrag.axisA]: clamp(point.x - currentDrag.offsetA, -1, 1),
-            [currentDrag.axisB]: clamp(point.y - currentDrag.offsetB, -1, 1)
+      if (currentDrag.mode === "move") {
+        setBox((currentBox) => {
+          if (!currentBox) {
+            return currentBox;
           }
-        };
-      });
+          return {
+            ...currentBox,
+            center: {
+              ...currentBox.center,
+              [currentDrag.axisA]: clamp(point.x - currentDrag.offsetA, -1, 1),
+              [currentDrag.axisB]: clamp(point.y - currentDrag.offsetB, -1, 1)
+            }
+          };
+        });
+      } else if (currentDrag.mode === "resize-edge") {
+        setBox((currentBox) => {
+          if (!currentBox) {
+            return currentBox;
+          }
+          const [axisA, axisB] = FLAT_VIEW_AXES[currentDrag.viewId];
+          const center2D = { x: currentBox.center[axisA], y: currentBox.center[axisB] };
+          const dx = point.x - center2D.x;
+          const dy = point.y - center2D.y;
+          const edgeNormalAngle = currentDrag.edgeIndex % 2 === 0
+            ? currentDrag.angle + Math.PI / 2
+            : currentDrag.angle;
+          const projected = dx * Math.cos(edgeNormalAngle) + dy * Math.sin(edgeNormalAngle);
+          const delta = projected - currentDrag.initialProjected;
+          const newSize = clamp(currentDrag.initialSize + 2 * Math.abs(delta), 0.2, 1.8);
+          return {
+            ...currentBox,
+            size: { ...currentBox.size, [currentDrag.sizeAxis]: newSize }
+          };
+        });
+      } else if (currentDrag.mode === "resize-corner") {
+        setBox((currentBox) => {
+          if (!currentBox) {
+            return currentBox;
+          }
+          const [axisA, axisB] = FLAT_VIEW_AXES[currentDrag.viewId];
+          const center2D = { x: currentBox.center[axisA], y: currentBox.center[axisB] };
+          const dx = point.x - center2D.x;
+          const dy = point.y - center2D.y;
+          const projA = dx * Math.cos(currentDrag.angle) + dy * Math.sin(currentDrag.angle);
+          const projB = -dx * Math.sin(currentDrag.angle) + dy * Math.cos(currentDrag.angle);
+          const deltaA = Math.abs(projA) - Math.abs(currentDrag.initialProjectedA);
+          const deltaB = Math.abs(projB) - Math.abs(currentDrag.initialProjectedB);
+          const newSizeA = clamp(currentDrag.initialSizeA + 2 * deltaA, 0.2, 1.8);
+          const newSizeB = clamp(currentDrag.initialSizeB + 2 * deltaB, 0.2, 1.8);
+          return {
+            ...currentBox,
+            size: {
+              ...currentBox.size,
+              [currentDrag.sizeAxisA]: newSizeA,
+              [currentDrag.sizeAxisB]: newSizeB
+            }
+          };
+        });
+      } else if (currentDrag.mode === "rotate") {
+        setBox((currentBox) => {
+          if (!currentBox) {
+            return currentBox;
+          }
+          const [axisA, axisB] = FLAT_VIEW_AXES[currentDrag.viewId];
+          const center2D = { x: currentBox.center[axisA], y: currentBox.center[axisB] };
+          const currentAngle = Math.atan2(point.y - center2D.y, point.x - center2D.x);
+          const deltaRad = currentAngle - currentDrag.initialPointerAngle;
+          const deltaDeg = (deltaRad * 180) / Math.PI;
+          const newRotation = clamp(currentDrag.initialRotationDeg + deltaDeg, -45, 45);
+          return {
+            ...currentBox,
+            rotation: { ...currentBox.rotation, [currentDrag.rotationAxis]: newRotation }
+          };
+        });
+      }
 
       return currentDrag;
     });
@@ -257,6 +401,18 @@ export const usePlannerState = () => {
   const endDrag = useCallback(() => {
     setDrag(null);
   }, []);
+
+  const hitTest = useCallback(
+    (viewId: ViewId, point: Point2, mode: BoxRenderMode): HandleId | null => {
+      if (!box) {
+        return null;
+      }
+      return mode === "flat2d"
+        ? hitTestFlat(point, box, viewId)
+        : hitTestCube(point, box, viewId);
+    },
+    [box]
+  );
 
   const checkPlanning = useCallback(() => {
     if (!caseId || !currentProtocol || !box || !params) {
@@ -434,6 +590,7 @@ export const usePlannerState = () => {
     beginDrag,
     moveDrag,
     endDrag,
+    hitTest,
     selectCase,
     selectProtocol,
     selectLocalizerSet,

@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { getFlatGeometry, getProjectedGeometry, normToScreen, pointerToNorm } from "@/features/planner/lib/geometry";
+import { getFlatGeometry, getProjectedGeometry, inPlaneAngle, normToScreen, pointerToNorm, squaredDistance } from "@/features/planner/lib/geometry";
 import { loadImage } from "@/features/planner/lib/media";
-import { BoxRenderMode, PlannerBox, Point2, ViewId } from "@/features/planner/types/planner";
+import { BoxRenderMode, HandleId, PlannerBox, Point2, ViewId } from "@/features/planner/types/planner";
 
 type LocalizerCanvasProps = {
   viewId: ViewId;
@@ -17,6 +17,7 @@ type LocalizerCanvasProps = {
   onBeginDrag: (viewId: ViewId, point: Point2, mode: BoxRenderMode) => boolean;
   onMoveDrag: (viewId: ViewId, point: Point2) => void;
   onEndDrag: () => void;
+  onHitTest?: (viewId: ViewId, point: Point2, mode: BoxRenderMode) => HandleId | null;
 };
 
 const CANVAS_SIZE = 320;
@@ -31,11 +32,13 @@ export const LocalizerCanvas = ({
   editable,
   onBeginDrag,
   onMoveDrag,
-  onEndDrag
+  onEndDrag,
+  onHitTest
 }: LocalizerCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [hoveredHandle, setHoveredHandle] = useState<HandleId | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -86,6 +89,10 @@ export const LocalizerCanvas = ({
         dashed: false,
         alpha: 1
       });
+
+      if (editable && boxRenderMode === "flat2d") {
+        drawHandles(ctx, box, viewId, hoveredHandle);
+      }
     }
 
     if (!editable) {
@@ -95,7 +102,7 @@ export const LocalizerCanvas = ({
       ctx.font = "12px sans-serif";
       ctx.fillText("Derived from shared 3D prescription", 10, CANVAS_SIZE - 9);
     }
-  }, [box, boxRenderMode, editable, image, showTarget, targetBox, viewId]);
+  }, [box, boxRenderMode, editable, hoveredHandle, image, showTarget, targetBox, viewId]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!editable || !canvasRef.current) {
@@ -117,10 +124,14 @@ export const LocalizerCanvas = ({
 
     canvasRef.current.setPointerCapture(event.pointerId);
     setDragging(true);
+
+    if (hoveredHandle?.kind === "move") {
+      canvasRef.current.style.cursor = "grabbing";
+    }
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!editable || !dragging || !canvasRef.current) {
+    if (!editable || !canvasRef.current) {
       return;
     }
 
@@ -132,7 +143,17 @@ export const LocalizerCanvas = ({
       CANVAS_SIZE
     );
 
-    onMoveDrag(viewId, point);
+    if (dragging) {
+      onMoveDrag(viewId, point);
+      return;
+    }
+
+    // Hover detection
+    if (onHitTest) {
+      const handle = onHitTest(viewId, point, boxRenderMode);
+      setHoveredHandle(handle);
+      canvasRef.current.style.cursor = getCursorForHandle(handle, box, viewId, dragging);
+    }
   };
 
   const releaseDrag = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -147,6 +168,8 @@ export const LocalizerCanvas = ({
     if (dragging) {
       setDragging(false);
       onEndDrag();
+      canvasRef.current.style.cursor = "default";
+      setHoveredHandle(null);
     }
   };
 
@@ -342,4 +365,128 @@ const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) 
   }
 
   ctx.restore();
+};
+
+const drawHandles = (
+  ctx: CanvasRenderingContext2D,
+  box: PlannerBox,
+  viewId: ViewId,
+  hoveredHandle: HandleId | null
+) => {
+  const geometry = getFlatGeometry(box, viewId);
+  const corners = geometry.projected.map((p) => normToScreen(p, CANVAS_SIZE, CANVAS_SIZE));
+  const center2D = normToScreen(geometry.center2D, CANVAS_SIZE, CANVAS_SIZE);
+
+  ctx.save();
+
+  // Corner handles: filled squares
+  for (let i = 0; i < 4; i++) {
+    const c = corners[i];
+    const isHovered = hoveredHandle?.kind === "corner" && hoveredHandle.index === i;
+    const halfSize = isHovered ? 4 : 3;
+
+    ctx.fillStyle = "#57fff1";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.fillRect(c.x - halfSize, c.y - halfSize, halfSize * 2, halfSize * 2);
+    ctx.strokeRect(c.x - halfSize, c.y - halfSize, halfSize * 2, halfSize * 2);
+  }
+
+  // Edge midpoint handles: circles
+  for (let i = 0; i < 4; i++) {
+    const a = corners[i];
+    const b = corners[(i + 1) % 4];
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const isHovered = hoveredHandle?.kind === "edge" && hoveredHandle.index === i;
+    const radius = isHovered ? 4 : 3;
+
+    ctx.beginPath();
+    ctx.arc(mid.x, mid.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "#57fff1";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Rotation ring indicator when hovering rotate zone
+  if (hoveredHandle?.kind === "rotate") {
+    let maxDist = 0;
+    for (const c of corners) {
+      const d = Math.sqrt(squaredDistance(center2D, c));
+      if (d > maxDist) maxDist = d;
+    }
+    const ringRadius = maxDist + 8;
+
+    ctx.beginPath();
+    ctx.arc(center2D.x, center2D.y, ringRadius, 0, Math.PI * 2);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(87, 255, 241, 0.5)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+};
+
+const RESIZE_CURSORS = [
+  "ns-resize",     // 0: up
+  "nesw-resize",   // 1: up-right
+  "ew-resize",     // 2: right
+  "nwse-resize",   // 3: down-right
+  "ns-resize",     // 4: down
+  "nesw-resize",   // 5: down-left
+  "ew-resize",     // 6: left
+  "nwse-resize"    // 7: up-left
+] as const;
+
+const getResizeCursor = (edgeOrCornerIndex: number, angle: number, isCorner: boolean): string => {
+  // Compute the base angle for this edge/corner
+  // Edges: 0=bottom, 1=right, 2=top, 3=left (in normal screen coords where y-down)
+  // Corners: 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+  let baseAngle: number;
+  if (isCorner) {
+    // Corners at 45deg offsets: index 0 -> 225deg, 1 -> 315deg, 2 -> 45deg, 3 -> 135deg
+    baseAngle = [225, 315, 45, 135][edgeOrCornerIndex] ?? 0;
+  } else {
+    // Edges: index 0 -> bottom (270deg normal), 1 -> right (0deg normal), 2 -> top (90deg), 3 -> left (180deg)
+    baseAngle = [270, 0, 90, 180][edgeOrCornerIndex] ?? 0;
+  }
+
+  // Add the box rotation (convert radians to degrees, negate because screen-y is inverted)
+  const totalAngle = (baseAngle - (angle * 180) / Math.PI + 360) % 360;
+
+  // Quantize to nearest 45deg sector
+  const sector = Math.round(totalAngle / 45) % 8;
+  return RESIZE_CURSORS[sector];
+};
+
+const getCursorForHandle = (
+  handle: HandleId | null,
+  box: PlannerBox | null,
+  viewId: ViewId,
+  isDragging: boolean
+): string => {
+  if (!handle) return "default";
+
+  if (handle.kind === "move") {
+    return isDragging ? "grabbing" : "grab";
+  }
+
+  if (handle.kind === "rotate") {
+    return "crosshair";
+  }
+
+  const angle = box ? inPlaneAngle(box, viewId) : 0;
+
+  if (handle.kind === "edge") {
+    return getResizeCursor(handle.index, angle, false);
+  }
+
+  if (handle.kind === "corner") {
+    return getResizeCursor(handle.index, angle, true);
+  }
+
+  return "default";
 };

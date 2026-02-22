@@ -148,6 +148,12 @@ export type CalibrationMap = Record<string, ProtocolTarget>;
 
 export type Point2 = { x: number; y: number };
 
+export type HandleId =
+  | { kind: "corner"; index: 0 | 1 | 2 | 3 }
+  | { kind: "edge"; index: 0 | 1 | 2 | 3 }
+  | { kind: "rotate" }
+  | { kind: "move" };
+
 export type ExpertRole = "radiologist" | "technologist";
 
 export type ExpertAnnotation = {
