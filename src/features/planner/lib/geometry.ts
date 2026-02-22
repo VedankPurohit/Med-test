@@ -168,13 +168,12 @@ export const FLAT_VIEW_AXES: Record<ViewId, [keyof Vector3, keyof Vector3]> = {
 };
 
 export const inPlaneAngle = (box: PlannerBox, viewId: ViewId): number => {
-  if (viewId === "axial") {
-    return toRadians(box.rotation.rz);
-  }
-  if (viewId === "sagittal") {
-    return toRadians(box.rotation.rx);
-  }
-  return toRadians(box.rotation.ry);
+  const geometry = getFlatGeometry(box, viewId);
+  const edge = {
+    x: geometry.projected[1].x - geometry.projected[0].x,
+    y: geometry.projected[1].y - geometry.projected[0].y
+  };
+  return Math.atan2(edge.y, edge.x);
 };
 
 export const rotate2D = (point: Point2, radians: number): Point2 => {
@@ -188,26 +187,27 @@ export const rotate2D = (point: Point2, radians: number): Point2 => {
 
 export const getFlatGeometry = (box: PlannerBox, viewId: ViewId) => {
   const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
-  const center2D = projectPoint(box.center, viewId);
   const halfA = box.size[axisA] / 2;
   const halfB = box.size[axisB] / 2;
-  const angle = inPlaneAngle(box, viewId);
 
-  const localCorners: Point2[] = [
-    { x: -halfA, y: -halfB },
-    { x: halfA, y: -halfB },
-    { x: halfA, y: halfB },
-    { x: -halfA, y: halfB }
-  ];
-
-  const projected = localCorners.map((corner) => {
-    const rotated = rotate2D(corner, angle);
-    return {
-      x: rotated.x + center2D.x,
-      y: rotated.y + center2D.y
-    };
+  // Mid-plane face corners: depth axis = 0, vary axisA and axisB
+  const signs: [number, number][] = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const localCorners3D: Vector3[] = signs.map(([sA, sB]) => {
+    const p: Vector3 = { x: 0, y: 0, z: 0 };
+    p[axisA] = sA * halfA;
+    p[axisB] = sB * halfB;
+    return p;
   });
 
+  const projected = localCorners3D.map((corner) => {
+    const rotated = rotate3D(corner, box.rotation);
+    return projectPoint(
+      { x: rotated.x + box.center.x, y: rotated.y + box.center.y, z: rotated.z + box.center.z },
+      viewId
+    );
+  });
+
+  const center2D = projectPoint(box.center, viewId);
   return { projected, hull: projected, center2D };
 };
 
