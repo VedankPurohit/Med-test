@@ -120,7 +120,29 @@ Clinical C-spine and L-spine axials are prescribed as **separate angle groups at
 
 **Recommendation**: For now, add a UI note acknowledging this is a simplified single-slab model. Long-term, consider supporting multi-group prescriptions.
 
-### 7. No validation that STIR TI is appropriate for the TR
+### 7. Flat 2D mode lacks cross-axis rotation coupling
+**File:** `src/features/planner/lib/geometry.ts` — `getFlatGeometry` and `inPlaneAngle`
+
+On real MRI consoles, the prescription slab is a 3D volume. Every localizer view shows the true intersection of that 3D slab with its imaging plane. Tilting the prescription on one localizer (e.g., sagittal `rx`) immediately changes how it appears on all other localizers (axial, coronal) because the slab is now oblique to those planes.
+
+The current flat 2D rendering mode does **not** model this. Each view only renders its own rotation axis:
+- Axial view uses only `rz`
+- Sagittal view uses only `rx`
+- Coronal view uses only `ry`
+
+This means rotating in one view has no visual effect on other views in flat 2D mode. The 3D Cube Wireframe mode correctly applies full 3D rotation to all views.
+
+**Impact**: Students using flat 2D mode won't learn that adjustments in one plane affect all others — a fundamental concept in MRI prescription planning. The underlying box **data** is correct (scoring uses the full 3D rotation), but the visual representation is misleading.
+
+**Fix** (validated, reverted for now — see git history `204aeb3`):
+1. Rewrite `getFlatGeometry` to construct 4 mid-plane face corners (depth axis = 0 in local space), apply `rotate3D` (full Euler rotation), then `projectPoint` to 2D — instead of using `rotate2D` with a single-axis angle.
+2. Derive `inPlaneAngle` from the actual projected edge direction (`atan2` of edge vector) instead of reading a single rotation component.
+
+With these changes, the flat quad becomes a parallelogram under cross-axis rotation, accurately showing the coupling. All downstream consumers (`hitTestFlat`, `drawFlatOutline`, `drawHandles`, resize/rotate drag logic, cursor feedback) work through these two functions and inherit the fix automatically. Zero-rotation case remains identical (clean rectangle).
+
+**No other files need to change.** The fix was implemented and tested (55/55 tests pass, TypeScript clean) but reverted to keep flat 2D as a simplified teaching mode for now. Re-apply commit `204aeb3` when ready.
+
+### 8. No validation that STIR TI is appropriate for the TR
 **File:** `src/features/planner/data/protocols/spine.ts:162-183`
 
 STIR requires TI << TR for proper fat nulling. The protocol has TI=160ms with TR=4500ms which is correct, but nothing prevents a student from setting TI > TR/2 (which would produce incorrect contrast). There's no feedback for this.
@@ -138,6 +160,6 @@ STIR requires TI << TR for proper fat nulling. The protocol has TI=160ms with TR
 | **Clinical validation** | Incomplete | Missing TR>=TE hard check, TI vs TR ratio, field strength context |
 | **Protocol modeling** | Simplified | Single-slab model for inherently multi-group protocols (spine axials) |
 | **Consensus algorithm** | Correct | Median + MAD is appropriate for inter-rater aggregation |
-| **Geometry/projection** | Correct | Euler rotations, view projections, hit detection all accurate |
+| **Geometry/projection** | Mostly correct | Euler rotations, hit detection accurate; flat 2D mode missing cross-axis rotation coupling (fix available, see #7) |
 
 **Overall**: The clinical content is **solid for a training tool**. The parameter values would pass review by a radiologist/MRI physicist. The main gaps are in validation guardrails (TR>=TE, field strength) and feedback specificity (directional hints), not in the core clinical data itself.
