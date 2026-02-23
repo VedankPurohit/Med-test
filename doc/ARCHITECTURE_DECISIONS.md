@@ -30,3 +30,8 @@
 - Why: Reduces legal/compliance risk while enabling fast educational validation cycles.
 - Consequence: No clinical decision support claims in current product scope.
 
+## ADR-006: Deterministic protocol placement session state
+- Status: Accepted
+- Decision: Keep protocol placement progress in a deterministic, case+protocol keyed placement map with pure save/restore helpers (`protocolPlacements.ts`) and drive protocol/case switching from that map.
+- Why: Hook-local ad hoc saves could read stale state during protocol switches and case switches could reinitialize default protocols instead of restoring prior work.
+- Consequence: Switching protocols/cases now restores prior placement consistently, and the placement map is now a stable foundation for future export/session analytics features.

@@ -14,6 +14,10 @@ export function usePlannerBridge() {
 
   const planner = usePlannerState();
   const [boxRenderMode, setBoxRenderMode] = useState<BoxRenderMode>('flat2d');
+  const plannerCaseId = planner.caseId;
+  const plannerProtocolId = planner.protocolId;
+  const selectCase = planner.selectCase;
+  const selectProtocol = planner.selectProtocol;
 
   const activeExamCardId =
     activeProtocolIndex !== null
@@ -32,23 +36,22 @@ export function usePlannerBridge() {
     const targetCaseId = resolved?.caseId ?? caseId;
     if (!targetCaseId) return;
 
-    // Case needs to change — save current placement, then switch
-    if (planner.caseId !== targetCaseId) {
-      planner.saveCurrent();
-      planner.selectCase(targetCaseId);
+    // Case needs to change — switch planner case (hook persists current snapshot internally)
+    if (plannerCaseId !== targetCaseId) {
+      selectCase(targetCaseId);
       return;
     }
 
     // Case is loaded — select the specific protocol if one is resolved
-    if (resolved && planner.protocolId !== resolved.protocolConfig.id) {
-      planner.selectProtocol(resolved.protocolConfig.id);
+    if (resolved && plannerProtocolId !== resolved.protocolConfig.id) {
+      selectProtocol(resolved.protocolConfig.id);
     }
-  }, [caseId, resolved, planner.caseId, planner.protocolId, planner.selectCase, planner.selectProtocol, planner.saveCurrent]);
+  }, [caseId, plannerCaseId, plannerProtocolId, resolved, selectCase, selectProtocol]);
 
   // Active when canvases should be shown (after survey, with planner initialized)
   const isActive =
     (phase === 'survey-complete' || phase === 'protocol-active') &&
-    planner.caseId !== null;
+    plannerCaseId !== null;
 
   return {
     planner,

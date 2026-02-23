@@ -1,20 +1,38 @@
 'use client';
 
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { buildExamSubmissionSummary, haveVisitedAllSelectedProtocols } from "@/features/workstation/lib/examSummary";
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
 
 export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
+  const router = useRouter();
   const { planner } = bridge;
   const lastScore = planner.lastScore;
   const setRightPanelTab = useWorkstationStore((s) => s.setRightPanelTab);
+  const addedProtocols = useWorkstationStore((s) => s.addedProtocols);
+  const setSubmissionSummary = useWorkstationStore((s) => s.setSubmissionSummary);
+  const allVisited = useMemo(() => haveVisitedAllSelectedProtocols(addedProtocols), [addedProtocols]);
+  const remainingProtocols = useMemo(
+    () => addedProtocols.filter((protocol) => protocol.status === "pending").length,
+    [addedProtocols]
+  );
 
   const handleCheck = () => {
     planner.checkPlanning();
     setRightPanelTab('feedback');
   };
 
+  const handleSubmitExam = () => {
+    const summary = buildExamSubmissionSummary(addedProtocols, planner.getAllPlacements());
+    setSubmissionSummary(summary);
+    setRightPanelTab("feedback");
+    router.push("/report");
+  };
+
   return (
-    <div className="h-full flex flex-col" style={{ background: 'var(--chrome-surface)' }}>
+    <div className="h-full min-h-0 flex flex-col overflow-hidden" style={{ background: 'var(--chrome-surface)' }}>
       {/* Action buttons */}
       <div
         className="flex gap-1 px-2 py-1.5 shrink-0"
@@ -41,6 +59,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
         </button>
         <button
           onClick={planner.resetPlan}
+          type="button"
           className="px-2 py-0.5 rounded text-[8px] cursor-pointer transition-colors"
           style={{
             background: 'transparent',
@@ -50,10 +69,31 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
         >
           Reset
         </button>
+        <button
+          onClick={handleSubmitExam}
+          type="button"
+          disabled={!allVisited}
+          className="px-2 py-0.5 rounded text-[8px] transition-colors ml-auto"
+          style={{
+            background: allVisited ? "rgba(22, 163, 74, 0.15)" : "transparent",
+            color: allVisited ? "var(--fb-good)" : "var(--text-muted)",
+            border: allVisited ? "1px solid rgba(22,163,74,0.35)" : "1px solid var(--chrome-border)",
+            cursor: allVisited ? "pointer" : "not-allowed",
+            opacity: allVisited ? 1 : 0.7
+          }}
+        >
+          Submit Session
+        </button>
       </div>
 
       {/* Score display */}
-      <div className="flex-1 overflow-y-auto px-2 py-1.5">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1.5">
+        {!allVisited && addedProtocols.length > 0 && (
+          <div className="mb-2 text-[8px]" style={{ color: "var(--text-muted)" }}>
+            Visit all selected protocols to unlock submit ({remainingProtocols} remaining).
+          </div>
+        )}
+
         {lastScore ? (
           <>
             {/* Pass/fail badge */}

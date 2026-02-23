@@ -14,6 +14,12 @@ import {
 } from "@/features/planner/lib/geometry";
 import { computeScore, deepClone, withFallbackTarget } from "@/features/planner/lib/scoring";
 import {
+  getSavedPlacement,
+  placementKey,
+  savePlacementSnapshot,
+  type PlacementMap
+} from "@/features/planner/lib/protocolPlacements";
+import {
   createEmptyCalibrations,
   createEmptyUploadMap,
   readJsonStorage,
@@ -49,14 +55,20 @@ const ROTATION_AXIS_FOR_VIEW: Record<ViewId, keyof Rotation3> = {
   sagittal: "rx",
   coronal: "ry"
 };
-
-type SavedPlacement = {
-  box: PlannerBox;
-  params: Record<string, number>;
-  lastScore: PlannerScore | null;
+const protocolKey = placementKey;
+const isLikelyImageSource = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") {
+    return false;
+  }
+  return (
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  );
 };
-
-const protocolKey = (caseId: CaseId, protocolId: string): string => `${caseId}:${protocolId}`;
 
 const getProtocolById = (caseConfig: CaseConfig, protocolId: string | null): ProtocolConfig => {
   if (!protocolId) {
@@ -80,7 +92,7 @@ export const usePlannerState = () => {
   const [statusMessage, setStatusMessage] = useState<string>("Choose case/protocol and start planning.");
   const [statusKind, setStatusKind] = useState<"info" | "warn">("info");
   const [lastScore, setLastScore] = useState<PlannerScore | null>(null);
-  const [savedPlacements, setSavedPlacements] = useState<Record<string, SavedPlacement>>({});
+  const [savedPlacements, setSavedPlacements] = useState<PlacementMap>({});
 
   // Refs for stable callbacks that need to read current state without re-creating
   const boxRef = useRef(box);
@@ -132,32 +144,50 @@ export const usePlannerState = () => {
       const nextCase = CASE_MAP[nextCaseId];
       const nextProtocol = nextCase.protocols[0];
       const nextLocalizerSet = nextCase.localizerSets[0] ?? null;
+      const nextPlacements = savePlacementSnapshot(savedPlacementsRef.current, {
+        caseId: caseIdRef.current,
+        protocolId: protocolIdRef.current,
+        box: boxRef.current,
+        params: paramsRef.current,
+        lastScore: lastScoreRef.current
+      });
+      if (nextPlacements !== savedPlacementsRef.current) {
+        setSavedPlacements(nextPlacements);
+      }
+      const restored = getSavedPlacement(nextPlacements, nextCaseId, nextProtocol.id);
 
       setCaseId(nextCaseId);
       setProtocolId(nextProtocol.id);
       setLocalizerSetId(nextLocalizerSet?.id ?? null);
-      setBox(deepClone(nextProtocol.initial));
-      setParams(deepClone(nextProtocol.initial.params));
+      if (restored) {
+        setBox(restored.box);
+        setParams(restored.params);
+        setLastScore(restored.lastScore);
+        setStatusMessage("Restored previous placement.");
+      } else {
+        setBox(deepClone(nextProtocol.initial));
+        setParams(deepClone(nextProtocol.initial.params));
+        setLastScore(null);
+        setStatusMessage("Adjust planning box and parameters, then check score.");
+      }
       setDrag(null);
-      setLastScore(null);
       setShowTarget(false);
-      setStatusMessage("Adjust planning box and parameters, then check score.");
       setStatusKind("info");
     },
     []
   );
 
   const saveCurrent = useCallback(() => {
-    const id = caseIdRef.current;
-    const pid = protocolIdRef.current;
-    const b = boxRef.current;
-    const p = paramsRef.current;
-    if (!id || !pid || !b || !p) return;
-    const key = protocolKey(id, pid);
-    setSavedPlacements((prev) => ({
-      ...prev,
-      [key]: { box: deepClone(b), params: deepClone(p), lastScore: lastScoreRef.current },
-    }));
+    const nextPlacements = savePlacementSnapshot(savedPlacementsRef.current, {
+      caseId: caseIdRef.current,
+      protocolId: protocolIdRef.current,
+      box: boxRef.current,
+      params: paramsRef.current,
+      lastScore: lastScoreRef.current
+    });
+    if (nextPlacements !== savedPlacementsRef.current) {
+      setSavedPlacements(nextPlacements);
+    }
   }, []);
 
   const selectProtocol = useCallback(
@@ -168,15 +198,19 @@ export const usePlannerState = () => {
 
       // Save current placement before switching (skip if same protocol, e.g. after selectCase)
       const curCaseId = caseIdRef.current;
-      const curProtocolId = protocolIdRef.current;
-      const curBox = boxRef.current;
-      const curParams = paramsRef.current;
-      if (curCaseId && curProtocolId && curProtocolId !== nextProtocolId && curBox && curParams) {
-        const currentKey = protocolKey(curCaseId, curProtocolId);
-        setSavedPlacements((prev) => ({
-          ...prev,
-          [currentKey]: { box: deepClone(curBox), params: deepClone(curParams), lastScore: lastScoreRef.current },
-        }));
+      const nextPlacements = savePlacementSnapshot(
+        savedPlacementsRef.current,
+        {
+          caseId: curCaseId,
+          protocolId: protocolIdRef.current,
+          box: boxRef.current,
+          params: paramsRef.current,
+          lastScore: lastScoreRef.current
+        },
+        { skipProtocolId: nextProtocolId }
+      );
+      if (nextPlacements !== savedPlacementsRef.current) {
+        setSavedPlacements(nextPlacements);
       }
 
       if (!curCaseId) {
@@ -184,17 +218,16 @@ export const usePlannerState = () => {
       }
 
       const nextProtocol = getProtocolById(caseConfig, nextProtocolId);
-      const nextKey = protocolKey(curCaseId, nextProtocolId);
 
       setProtocolId(nextProtocol.id);
       setDrag(null);
       setShowTarget(false);
 
       // Restore saved placement or use initial
-      const saved = savedPlacementsRef.current[nextKey];
+      const saved = getSavedPlacement(nextPlacements, curCaseId, nextProtocolId);
       if (saved) {
-        setBox(deepClone(saved.box));
-        setParams(deepClone(saved.params));
+        setBox(saved.box);
+        setParams(saved.params);
         setLastScore(saved.lastScore);
         setStatusMessage("Restored previous placement.");
         setStatusKind("info");
@@ -609,7 +642,7 @@ export const usePlannerState = () => {
       }
 
       const uploaded = uploads[caseId][viewId];
-      if (uploaded) {
+      if (uploaded && isLikelyImageSource(uploaded)) {
         return uploaded;
       }
 
@@ -623,19 +656,13 @@ export const usePlannerState = () => {
   );
 
   const getAllPlacements = useCallback(() => {
-    const placements = { ...savedPlacementsRef.current };
-    const id = caseIdRef.current;
-    const pid = protocolIdRef.current;
-    const b = boxRef.current;
-    const p = paramsRef.current;
-    if (id && pid && b && p) {
-      placements[protocolKey(id, pid)] = {
-        box: deepClone(b),
-        params: deepClone(p),
-        lastScore: lastScoreRef.current,
-      };
-    }
-    return placements;
+    return savePlacementSnapshot(savedPlacementsRef.current, {
+      caseId: caseIdRef.current,
+      protocolId: protocolIdRef.current,
+      box: boxRef.current,
+      params: paramsRef.current,
+      lastScore: lastScoreRef.current
+    });
   }, []);
 
   const calibrationActive = useMemo(() => {

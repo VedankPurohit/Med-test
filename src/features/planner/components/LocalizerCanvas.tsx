@@ -10,6 +10,7 @@ type LocalizerCanvasProps = {
   viewId: ViewId;
   boxRenderMode: BoxRenderMode;
   imageSrc: string;
+  fallbackImageSrc?: string;
   box: PlannerBox | null;
   targetBox: PlannerBox | null;
   showTarget: boolean;
@@ -28,6 +29,7 @@ export const LocalizerCanvas = ({
   viewId,
   boxRenderMode,
   imageSrc,
+  fallbackImageSrc,
   box,
   targetBox,
   showTarget,
@@ -50,10 +52,11 @@ export const LocalizerCanvas = ({
 
   // Release pointer capture if component unmounts mid-drag
   useEffect(() => {
+    const canvas = canvasRef.current;
     return () => {
-      if (canvasRef.current && pointerIdRef.current !== null &&
-          canvasRef.current.hasPointerCapture(pointerIdRef.current)) {
-        canvasRef.current.releasePointerCapture(pointerIdRef.current);
+      if (canvas && pointerIdRef.current !== null &&
+          canvas.hasPointerCapture(pointerIdRef.current)) {
+        canvas.releasePointerCapture(pointerIdRef.current);
       }
     };
   }, []);
@@ -61,21 +64,37 @@ export const LocalizerCanvas = ({
   useEffect(() => {
     let mounted = true;
 
-    if (!imageSrc) {
+    if (!imageSrc && !fallbackImageSrc) {
       setImage(null);
       return;
     }
 
-    loadImage(imageSrc).then((nextImage) => {
-      if (mounted) {
-        setImage(nextImage);
+    const load = async () => {
+      const primary = imageSrc || fallbackImageSrc || "";
+      const primaryImage = await loadImage(primary);
+      if (!mounted) {
+        return;
       }
-    });
+      if (primaryImage) {
+        setImage(primaryImage);
+        return;
+      }
+      if (fallbackImageSrc && fallbackImageSrc !== primary) {
+        const fallbackImage = await loadImage(fallbackImageSrc);
+        if (mounted) {
+          setImage(fallbackImage);
+        }
+        return;
+      }
+      setImage(null);
+    };
+
+    void load();
 
     return () => {
       mounted = false;
     };
-  }, [imageSrc]);
+  }, [fallbackImageSrc, imageSrc]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

@@ -6,10 +6,113 @@ import type {
   RightPanelTab,
   ExamCardProtocol,
 } from '@/features/workstation/types/workstation';
+import type { ExamSubmissionSummary, ProtocolSummaryEntry } from '@/features/workstation/lib/examSummary';
 
 const REGION_DEFAULT_FOLDER: Record<RegionId, string[]> = {
-  brain: ['brain'],
-  spine: ['dorsal-spine'],
+  brain: [],
+  spine: [],
+};
+
+const SUBMISSION_SUMMARY_STORAGE_KEY = 'mriTrainerSubmissionSummaryV1';
+
+const canUseBrowserStorage = (): boolean => typeof window !== 'undefined';
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const isValidProtocolEntry = (value: unknown): value is ProtocolSummaryEntry => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const maybe = value as Partial<ProtocolSummaryEntry>;
+  if (
+    typeof maybe.examCardProtocolId !== 'string' ||
+    typeof maybe.label !== 'string' ||
+    typeof maybe.status !== 'string' ||
+    typeof maybe.mapped !== 'boolean' ||
+    typeof maybe.hasPlacement !== 'boolean' ||
+    !Array.isArray(maybe.feedback)
+  ) {
+    return false;
+  }
+  if (maybe.plannerCaseId !== null && maybe.plannerCaseId !== undefined && typeof maybe.plannerCaseId !== 'string') {
+    return false;
+  }
+  if (maybe.plannerProtocolId !== null && maybe.plannerProtocolId !== undefined && typeof maybe.plannerProtocolId !== 'string') {
+    return false;
+  }
+  if (maybe.scorePercent !== null && maybe.scorePercent !== undefined && !isFiniteNumber(maybe.scorePercent)) {
+    return false;
+  }
+  if (maybe.pass !== null && maybe.pass !== undefined && typeof maybe.pass !== 'boolean') {
+    return false;
+  }
+  return maybe.feedback.every((item) => typeof item === 'string');
+};
+
+const isValidSubmissionSummary = (value: unknown): value is ExamSubmissionSummary => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const maybe = value as Partial<ExamSubmissionSummary>;
+  if (typeof maybe.generatedAt !== 'string' || !Number.isFinite(Date.parse(maybe.generatedAt))) {
+    return false;
+  }
+  if (
+    !isFiniteNumber(maybe.totalProtocols) ||
+    !isFiniteNumber(maybe.visitedProtocols) ||
+    !isFiniteNumber(maybe.scoredProtocols) ||
+    !isFiniteNumber(maybe.passedProtocols)
+  ) {
+    return false;
+  }
+  if (maybe.averageScorePercent !== null && maybe.averageScorePercent !== undefined && !isFiniteNumber(maybe.averageScorePercent)) {
+    return false;
+  }
+  if (typeof maybe.allVisited !== 'boolean' || !Array.isArray(maybe.protocols)) {
+    return false;
+  }
+  if (maybe.protocols.length !== maybe.totalProtocols) {
+    return false;
+  }
+  if (!maybe.protocols.every(isValidProtocolEntry)) {
+    return false;
+  }
+  return true;
+};
+
+const readSubmissionSummary = (): ExamSubmissionSummary | null => {
+  if (!canUseBrowserStorage()) {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(SUBMISSION_SUMMARY_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!isValidSubmissionSummary(parsed)) {
+      window.localStorage.removeItem(SUBMISSION_SUMMARY_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    window.localStorage.removeItem(SUBMISSION_SUMMARY_STORAGE_KEY);
+    return null;
+  }
+};
+
+const writeSubmissionSummary = (summary: ExamSubmissionSummary | null): void => {
+  if (!canUseBrowserStorage()) {
+    return;
+  }
+  if (!summary) {
+    window.localStorage.removeItem(SUBMISSION_SUMMARY_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(SUBMISSION_SUMMARY_STORAGE_KEY, JSON.stringify(summary));
 };
 
 function getCleanExamState(regionId: RegionId | null) {
@@ -24,6 +127,7 @@ function getCleanExamState(regionId: RegionId | null) {
     showConfirmDialog: false,
     mismatchedProtocols: [] as string[],
     examStartTime: null as number | null,
+    submissionSummary: readSubmissionSummary(),
   };
 }
 
@@ -41,6 +145,7 @@ interface WorkstationState {
   showConfirmDialog: boolean;
   mismatchedProtocols: string[];
   examStartTime: number | null;
+  submissionSummary: ExamSubmissionSummary | null;
 }
 
 interface WorkstationActions {
@@ -61,6 +166,8 @@ interface WorkstationActions {
   toggleFolder: (folderId: string) => void;
   setRightPanelTab: (tab: RightPanelTab) => void;
   isProtocolAdded: (protocolId: string) => boolean;
+  setSubmissionSummary: (summary: ExamSubmissionSummary) => void;
+  clearSubmissionSummary: () => void;
   resetExam: () => void;
 }
 
@@ -219,6 +326,16 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
 
     isProtocolAdded: (protocolId) => {
       return get().addedProtocols.some((p) => p.protocolId === protocolId);
+    },
+
+    setSubmissionSummary: (summary) => {
+      writeSubmissionSummary(summary);
+      set({ submissionSummary: summary });
+    },
+
+    clearSubmissionSummary: () => {
+      writeSubmissionSummary(null);
+      set({ submissionSummary: null });
     },
 
     resetExam: () => {
