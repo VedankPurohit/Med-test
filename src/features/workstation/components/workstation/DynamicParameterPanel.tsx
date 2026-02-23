@@ -47,7 +47,7 @@ export default function DynamicParameterPanel({ bridge }: { bridge: PlannerBridg
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           {protocol.parameterSpecs.map((spec) => {
             const key = String(spec.key);
-            const value = planner.params?.[key] ?? 0;
+            const value = planner.params?.[key] ?? spec.min ?? 0;
             const label = spec.unit ? `${spec.label} (${spec.unit})` : spec.label;
             return (
               <div key={key}>

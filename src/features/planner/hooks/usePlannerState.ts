@@ -179,8 +179,12 @@ export const usePlannerState = () => {
         }));
       }
 
+      if (!curCaseId) {
+        return;
+      }
+
       const nextProtocol = getProtocolById(caseConfig, nextProtocolId);
-      const nextKey = protocolKey(curCaseId!, nextProtocolId);
+      const nextKey = protocolKey(curCaseId, nextProtocolId);
 
       setProtocolId(nextProtocol.id);
       setDrag(null);
