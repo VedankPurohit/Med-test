@@ -60,14 +60,14 @@ function TopBar({
       <div className="flex items-center gap-2">
         <div className="w-2 h-2 rounded-full" style={{ background: "var(--accent-blue)", boxShadow: "var(--glow-blue)" }} />
         <span className="text-[10px] font-semibold tracking-[0.15em] uppercase" style={{ color: "var(--text-primary)" }}>
-          MedAssist
+          MRI Planner Lab
         </span>
       </div>
 
       <div className="w-px h-4" style={{ background: "var(--chrome-border)" }} />
 
       <span className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
-        Contribution Studio
+        Dataset Contribution Studio
       </span>
 
       <span className="text-[9px] px-2 py-0.5 rounded" style={{ background: "var(--accent-blue-dim)", color: "var(--accent-blue)" }}>
@@ -144,7 +144,7 @@ function ProtocolSidebar({
               No protocols added
             </div>
             <div className="text-[8px] mt-1" style={{ color: "var(--chrome-border-bright)" }}>
-              Use Setup panel below
+              Use the setup panels below
             </div>
           </div>
         ) : (
@@ -330,7 +330,7 @@ export default function ContributionStudioPage() {
   const [views, setViews] = useState(emptyViews);
   const [selectedProtocols, setSelectedProtocols] = useState<ContributionProtocolEntry[]>([]);
   const [catalogSelection, setCatalogSelection] = useState(EXISTING_PROTOCOL_CATALOG[0]?.key ?? "");
-  const [statusMessage, setStatusMessage] = useState("Complete setup below, then place each protocol and export.");
+  const [statusMessage, setStatusMessage] = useState("Complete setup, place each protocol, then export.");
   const [statusKind, setStatusKind] = useState<"info" | "warn">("info");
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
 
@@ -607,7 +607,7 @@ export default function ContributionStudioPage() {
                     No Protocol Active
                   </div>
                   <p className="text-[10px] mt-1" style={{ color: "var(--text-secondary)" }}>
-                    Add/select a protocol in the left sidebar.
+                    Add or select a protocol in the left sidebar.
                   </p>
                 </div>
               </div>

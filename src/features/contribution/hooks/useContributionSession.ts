@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   FLAT_VIEW_AXES,
   VIEW_CONFIG,
@@ -59,6 +59,7 @@ export const useContributionSession = (protocols: ContributionProtocolEntry[]) =
   );
   const [activeProtocolId, setActiveProtocolId] = useState<string | null>(protocols[0]?.id ?? null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const protocolIdsSignatureRef = useRef<string>(protocols.map((protocol) => protocol.id).join("|"));
 
   const activeProtocol = useMemo(
     () => protocols.find((protocol) => protocol.id === activeProtocolId) ?? null,
@@ -73,6 +74,12 @@ export const useContributionSession = (protocols: ContributionProtocolEntry[]) =
   }, [activeProtocolId, placements]);
 
   const ensureProtocols = useCallback((nextProtocols: ContributionProtocolEntry[]) => {
+    const nextSignature = nextProtocols.map((protocol) => protocol.id).join("|");
+    if (nextSignature === protocolIdsSignatureRef.current) {
+      return;
+    }
+    protocolIdsSignatureRef.current = nextSignature;
+
     setPlacements((current) => {
       const next: ContributionPlacementMap = {};
       for (const protocol of nextProtocols) {

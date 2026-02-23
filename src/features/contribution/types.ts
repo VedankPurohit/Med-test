@@ -21,6 +21,7 @@ export type ContributionAnatomy = {
 };
 
 export type ContributionImageInput = {
+  // Keep both forms: dataUrl powers immediate canvas preview, bytes power ZIP/binary export.
   fileName: string;
   mimeType: string;
   sizeBytes: number;
@@ -94,7 +95,7 @@ export type ContributionManifestV1 = {
   protocols: ContributionManifestProtocol[];
   exportMeta: {
     protocolCount: number;
-    viewCount: 3;
+    viewCount: number;
   };
 };
 

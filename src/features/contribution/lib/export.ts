@@ -44,11 +44,12 @@ export const buildContributionZipBlob = async (
 };
 
 export const downloadBlob = (fileName: string, blob: Blob): void => {
+  const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
+  link.href = objectUrl;
   link.download = fileName;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  setTimeout(() => URL.revokeObjectURL(link.href), 0);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 };

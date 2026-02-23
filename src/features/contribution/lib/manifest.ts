@@ -118,7 +118,7 @@ export const buildContributionManifest = (
     protocols,
     exportMeta: {
       protocolCount: protocols.length,
-      viewCount: 3
+      viewCount: VIEW_IDS.length
     }
   };
 };
