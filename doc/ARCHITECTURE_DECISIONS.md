@@ -35,3 +35,15 @@
 - Decision: Keep protocol placement progress in a deterministic, case+protocol keyed placement map with pure save/restore helpers (`protocolPlacements.ts`) and drive protocol/case switching from that map.
 - Why: Hook-local ad hoc saves could read stale state during protocol switches and case switches could reinitialize default protocols instead of restoring prior work.
 - Consequence: Switching protocols/cases now restores prior placement consistently, and the placement map is now a stable foundation for future export/session analytics features.
+
+## ADR-007: Versioned contribution manifest pipeline
+- Status: Accepted
+- Decision: Add a dedicated contribution domain with a versioned export contract (`ContributionManifestV1`) and deterministic ZIP packaging for uploaded views, protocol metadata, per-protocol placement, and parameter values.
+- Why: Dataset curation inputs must remain stable across product iterations, and ad hoc UI-state exports are brittle and hard to validate downstream.
+- Consequence: Contribution exports can be validated and consumed reliably by future tooling, and schema migrations can be explicit via versioned manifest evolution.
+
+## ADR-008: Protocol-agnostic contribution placement session
+- Status: Accepted
+- Decision: Keep `/createNew` placement state in a protocol-agnostic session helper (`useContributionSession` + pure session utilities) instead of coupling to case-bound planner orchestration.
+- Why: Contribution workflows must support existing and custom protocols across arbitrary anatomy labels while preserving deterministic per-protocol save/restore behavior.
+- Consequence: Contribution capture can evolve independently from workstation runtime flow, while still reusing planner canvas/geometry primitives.
