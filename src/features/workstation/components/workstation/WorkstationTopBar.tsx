@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import { MOCK_PATIENT } from '@/features/workstation/lib/mockData';
+import type { CaseId } from '@/features/workstation/types/mri';
+
+const CASE_LABELS: Record<CaseId, string> = {
+  brain: 'Brain MRI',
+  cspine: 'Cervical Spine MRI',
+  tspine: 'Thoracic Spine MRI',
+  lspine: 'Lumbar Spine MRI',
+};
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -15,6 +23,7 @@ function formatTime(ms: number): string {
 export default function WorkstationTopBar() {
   const phase = useWorkstationStore((s) => s.phase);
   const regionId = useWorkstationStore((s) => s.regionId);
+  const caseId = useWorkstationStore((s) => s.caseId);
   const protocols = useWorkstationStore((s) => s.addedProtocols);
   const examStartTime = useWorkstationStore((s) => s.examStartTime);
   const confirmProtocols = useWorkstationStore((s) => s.confirmProtocols);
@@ -77,7 +86,7 @@ export default function WorkstationTopBar() {
           color: 'var(--plan-orange)',
         }}
       >
-        {regionId ? `${regionId.charAt(0).toUpperCase() + regionId.slice(1)} MRI` : '---'}
+        {caseId ? CASE_LABELS[caseId] : regionId ? `${regionId.charAt(0).toUpperCase() + regionId.slice(1)} MRI` : '---'}
       </span>
 
       <span

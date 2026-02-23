@@ -2,14 +2,16 @@
 
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import RealTimePanel from './RealTimePanel';
+import FeedbackPanel from './FeedbackPanel';
 import type { RightPanelTab } from '@/features/workstation/types/workstation';
+import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
 
 const TABS: { id: RightPanelTab; label: string }[] = [
   { id: 'realtime', label: 'Real-Time' },
   { id: 'feedback', label: 'Feedback' },
 ];
 
-export default function BottomRightTabs() {
+export default function BottomRightTabs({ bridge }: { bridge?: PlannerBridge }) {
   const activeTab = useWorkstationStore((s) => s.rightPanelTab);
   const setTab = useWorkstationStore((s) => s.setRightPanelTab);
 
@@ -44,6 +46,8 @@ export default function BottomRightTabs() {
       <div className="flex-1 min-h-0">
         {activeTab === 'realtime' ? (
           <RealTimePanel />
+        ) : bridge?.isActive ? (
+          <FeedbackPanel bridge={bridge} />
         ) : (
           <div
             className="h-full flex flex-col"

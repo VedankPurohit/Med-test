@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RegionId } from '@/features/workstation/types/mri';
+import type { RegionId, CaseId } from '@/features/workstation/types/mri';
 import type {
   WorkstationPhase,
   ProtocolListItem,
@@ -30,6 +30,7 @@ function getCleanExamState(regionId: RegionId | null) {
 interface WorkstationState {
   phase: WorkstationPhase;
   regionId: RegionId | null;
+  caseId: CaseId | null;
   addedProtocols: ProtocolListItem[];
   activeProtocolIndex: number | null;
   browserOpen: boolean;
@@ -44,6 +45,7 @@ interface WorkstationState {
 
 interface WorkstationActions {
   selectRegion: (regionId: RegionId) => void;
+  selectSubRegion: (caseId: CaseId) => void;
   goBackToRegionSelect: () => void;
   addProtocol: (protocol: ExamCardProtocol) => void;
   removeProtocol: (protocolId: string) => void;
@@ -66,14 +68,23 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
   (set, get) => ({
     phase: 'region-select',
     regionId: null,
+    caseId: null,
     ...getCleanExamState(null),
 
     selectRegion: (regionId) => {
-      set({ phase: 'exam-setup', regionId, ...getCleanExamState(regionId) });
+      if (regionId === 'spine') {
+        set({ phase: 'spine-subregion', regionId: 'spine', caseId: null, ...getCleanExamState('spine') });
+      } else {
+        set({ phase: 'exam-setup', regionId, caseId: 'brain', ...getCleanExamState(regionId) });
+      }
+    },
+
+    selectSubRegion: (caseId) => {
+      set({ phase: 'exam-setup', caseId, ...getCleanExamState(get().regionId) });
     },
 
     goBackToRegionSelect: () => {
-      set({ phase: 'region-select', regionId: null, ...getCleanExamState(null) });
+      set({ phase: 'region-select', regionId: null, caseId: null, ...getCleanExamState(null) });
     },
 
     addProtocol: (protocol) => {

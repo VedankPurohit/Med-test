@@ -2,12 +2,15 @@
 
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import type { ViewType } from '@/features/workstation/types/mri';
+import { usePlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
+import type { BoxRenderMode } from '@/features/planner/types/planner';
 import WorkstationTopBar from './WorkstationTopBar';
 import ProtocolSidebar from './ProtocolSidebar';
 import ProtocolBrowser from './ProtocolBrowser';
 import ScannerStatusBar from './ScannerStatusBar';
 import BottomRightTabs from './BottomRightTabs';
 import EmptyPanel from './EmptyPanel';
+import PlanningCanvasPanel from './PlanningCanvasPanel';
 import SurveyAnimation from './SurveyAnimation';
 import ConfirmationDialog from './ConfirmationDialog';
 import { MOCK_PATIENT } from '@/features/workstation/lib/mockData';
@@ -26,6 +29,11 @@ const AXIS_COLORS: Record<string, string> = {
   L: 'var(--axis-rl)',
   H: 'var(--axis-fh)',
   F: 'var(--axis-fh)',
+};
+
+const RENDER_MODE_LABELS: Record<BoxRenderMode, string> = {
+  flat2d: 'Flat 2D',
+  cube3d: '3D Wire',
 };
 
 /** Black panel shown after survey (no images loaded — mock only) */
@@ -130,10 +138,73 @@ function PatientInfoSection() {
   );
 }
 
+/** Canvas toolbar with render mode toggle and show target */
+function CanvasToolbar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge> }) {
+  const { planner, boxRenderMode, setBoxRenderMode } = bridge;
+
+  const toggleMode = () => {
+    setBoxRenderMode(boxRenderMode === 'flat2d' ? 'cube3d' : 'flat2d');
+  };
+
+  return (
+    <div
+      className="flex items-center gap-3 px-2 py-0.5 shrink-0"
+      style={{
+        background: 'var(--chrome-surface)',
+        borderBottom: '1px solid var(--chrome-border)',
+      }}
+    >
+      <button
+        onClick={toggleMode}
+        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] cursor-pointer transition-colors"
+        style={{
+          background: 'var(--chrome-surface-raised)',
+          color: 'var(--text-secondary)',
+          border: '1px solid var(--chrome-border)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent-blue)';
+          e.currentTarget.style.color = 'var(--accent-blue)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--chrome-border)';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }}
+      >
+        {RENDER_MODE_LABELS[boxRenderMode]}
+      </button>
+
+      {bridge.resolved && (
+        <label
+          className="flex items-center gap-1 text-[8px] cursor-pointer select-none"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <input
+            type="checkbox"
+            checked={planner.showTargetAlways}
+            onChange={(e) => planner.setShowTargetAlways(e.target.checked)}
+            className="cursor-pointer"
+            style={{ accentColor: 'var(--accent-blue)' }}
+          />
+          Show Target
+        </label>
+      )}
+
+      <div className="flex-1" />
+
+      <span className="text-[7px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+        Drag axial / sagittal to plan
+      </span>
+    </div>
+  );
+}
+
 export default function WorkstationLayout() {
   const phase = useWorkstationStore((s) => s.phase);
+  const bridge = usePlannerBridge();
 
-  const showBlackPanels = phase === 'survey-complete' || phase === 'protocol-active';
+  const showCanvasPanels = bridge.isActive;
+  const showBlackPanels = (phase === 'survey-complete' || phase === 'protocol-active') && !showCanvasPanels;
   const showSurvey = phase === 'survey-running';
 
   return (
@@ -144,12 +215,19 @@ export default function WorkstationLayout() {
         <ProtocolSidebar />
 
         <div className="flex-1 min-w-0 flex flex-col">
+          {/* Canvas toolbar (only when canvases are shown) */}
+          {showCanvasPanels && <CanvasToolbar bridge={bridge} />}
+
           {/* Image panels row */}
           <div
             className="flex-1 min-h-0 flex gap-px p-px relative"
             style={{ background: 'var(--chrome-border)' }}
           >
-            {showBlackPanels ? (
+            {showCanvasPanels ? (
+              VIEWS.map((view) => (
+                <PlanningCanvasPanel key={view} view={view} bridge={bridge} />
+              ))
+            ) : showBlackPanels ? (
               VIEWS.map((view) => (
                 <BlackPanel key={view} view={view} />
               ))
@@ -166,7 +244,7 @@ export default function WorkstationLayout() {
             {showSurvey && <SurveyAnimation />}
           </div>
 
-          <ProtocolBrowser />
+          <ProtocolBrowser bridge={bridge} />
         </div>
 
         {/* Right Panel */}
@@ -188,7 +266,7 @@ export default function WorkstationLayout() {
               borderTop: '1px solid var(--chrome-border)',
             }}
           >
-            <BottomRightTabs />
+            <BottomRightTabs bridge={bridge} />
           </div>
         </div>
       </div>

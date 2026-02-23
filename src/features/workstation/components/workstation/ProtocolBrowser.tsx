@@ -4,6 +4,8 @@ import { useWorkstationStore } from '@/features/workstation/stores/useWorkstatio
 import { getExamCards } from '@/features/workstation/lib/examcards';
 import { isFolder, isProtocol } from '@/features/workstation/types/workstation';
 import type { ExamCardEntry, ExamCardProtocol } from '@/features/workstation/types/workstation';
+import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
+import DynamicParameterPanel from './DynamicParameterPanel';
 
 function ProtocolRow({ protocol }: { protocol: ExamCardProtocol }) {
   const addProtocol = useWorkstationStore((s) => s.addProtocol);
@@ -203,7 +205,7 @@ function ParameterSettings() {
   );
 }
 
-export default function ProtocolBrowser() {
+export default function ProtocolBrowser({ bridge }: { bridge?: PlannerBridge }) {
   const browserOpen = useWorkstationStore((s) => s.browserOpen);
   const setBrowserOpen = useWorkstationStore((s) => s.setBrowserOpen);
   const phase = useWorkstationStore((s) => s.phase);
@@ -220,7 +222,7 @@ export default function ProtocolBrowser() {
           borderTop: '1px solid var(--chrome-border)',
         }}
       >
-        <ParameterSettings />
+        {bridge?.isActive ? <DynamicParameterPanel bridge={bridge} /> : <ParameterSettings />}
       </div>
     );
   }
