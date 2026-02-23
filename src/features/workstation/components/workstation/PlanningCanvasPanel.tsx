@@ -38,7 +38,7 @@ export default function PlanningCanvasPanel({
   const showTarget = planner.showTarget || planner.showTargetAlways;
 
   // Only show the planning box when a specific protocol is actively selected
-  const hasActiveProtocol = bridge.resolved !== null;
+  const hasActiveProtocol = bridge.resolved !== null && planner.currentProtocol !== null;
 
   // Measure container to give the canvas dynamic dimensions
   const containerRef = useRef<HTMLDivElement>(null);

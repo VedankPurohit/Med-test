@@ -43,9 +43,20 @@ export const LocalizerCanvas = ({
   const canvasHeight = heightProp ?? DEFAULT_CANVAS_SIZE;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [hoveredHandle, setHoveredHandle] = useState<HandleId | null>(null);
+
+  // Release pointer capture if component unmounts mid-drag
+  useEffect(() => {
+    return () => {
+      if (canvasRef.current && pointerIdRef.current !== null &&
+          canvasRef.current.hasPointerCapture(pointerIdRef.current)) {
+        canvasRef.current.releasePointerCapture(pointerIdRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -130,6 +141,7 @@ export const LocalizerCanvas = ({
     }
 
     canvasRef.current.setPointerCapture(event.pointerId);
+    pointerIdRef.current = event.pointerId;
     setDragging(true);
 
     if (hoveredHandle?.kind === "move") {
@@ -171,6 +183,7 @@ export const LocalizerCanvas = ({
     if (canvasRef.current.hasPointerCapture(event.pointerId)) {
       canvasRef.current.releasePointerCapture(event.pointerId);
     }
+    pointerIdRef.current = null;
 
     if (dragging) {
       setDragging(false);

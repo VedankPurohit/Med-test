@@ -88,6 +88,16 @@ export default function SpineSubRegionSelector({ onSelect, onBack }: SpineSubReg
               e.currentTarget.style.background = 'var(--chrome-surface)';
               e.currentTarget.style.boxShadow = 'none';
             }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent-blue)';
+              e.currentTarget.style.background = 'var(--accent-blue-dim)';
+              e.currentTarget.style.boxShadow = 'var(--glow-blue)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = 'var(--chrome-border)';
+              e.currentTarget.style.background = 'var(--chrome-surface)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           >
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
@@ -133,6 +143,12 @@ export default function SpineSubRegionSelector({ onSelect, onBack }: SpineSubReg
           e.currentTarget.style.color = 'var(--text-secondary)';
         }}
         onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--text-muted)';
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }}
+        onBlur={(e) => {
           e.currentTarget.style.color = 'var(--text-muted)';
         }}
       >

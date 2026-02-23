@@ -170,6 +170,14 @@ function CanvasToolbar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge>
           e.currentTarget.style.borderColor = 'var(--chrome-border)';
           e.currentTarget.style.color = 'var(--text-secondary)';
         }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent-blue)';
+          e.currentTarget.style.color = 'var(--accent-blue)';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = 'var(--chrome-border)';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }}
       >
         {RENDER_MODE_LABELS[boxRenderMode]}
       </button>

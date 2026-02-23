@@ -103,7 +103,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
             <div className="space-y-1">
               {lastScore.feedback.map((line, i) => (
                 <div
-                  key={i}
+                  key={`${i}-${line}`}
                   className="text-[9px] leading-snug"
                   style={{ color: 'var(--text-secondary)' }}
                 >
