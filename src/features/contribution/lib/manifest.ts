@@ -52,9 +52,11 @@ const viewToManifest = (
   };
 };
 
-const protocolToManifest = (protocol: ContributionDraft["protocols"][number], placement: NonNullable<ContributionDraft["placements"][string]>): ContributionManifestProtocol => {
-  const safeId = slugifyId(protocol.id);
-
+const protocolToManifest = (
+  protocol: ContributionDraft["protocols"][number],
+  placement: NonNullable<ContributionDraft["placements"][string]>,
+  placementZipPath: string
+): ContributionManifestProtocol => {
   return {
     id: protocol.id,
     label: protocol.label,
@@ -64,9 +66,23 @@ const protocolToManifest = (protocol: ContributionDraft["protocols"][number], pl
     notes: protocol.notes,
     parameterSpecs: protocol.parameterSpecs,
     parameterValues: protocol.parameterValues,
-    placementZipPath: `protocols/${safeId}/placement.json`,
+    placementZipPath,
     placement
   };
+};
+
+const buildPlacementZipPaths = (protocolIds: string[]): string[] => {
+  const counts = new Map<string, number>();
+
+  return protocolIds.map((protocolId, index) => {
+    const base = slugifyId(protocolId);
+    const seen = (counts.get(base) ?? 0) + 1;
+    counts.set(base, seen);
+
+    const collisionSuffix = seen > 1 ? `-${seen}` : "";
+    const orderedPrefix = String(index + 1).padStart(2, "0");
+    return `protocols/${orderedPrefix}-${base}${collisionSuffix}/placement.json`;
+  });
 };
 
 export const buildContributionManifest = (
@@ -83,12 +99,14 @@ export const buildContributionManifest = (
     })
   ) as ContributionManifestV1["views"];
 
-  const protocols = draft.protocols.map((protocol) => {
+  const placementPaths = buildPlacementZipPaths(draft.protocols.map((protocol) => protocol.id));
+
+  const protocols = draft.protocols.map((protocol, index) => {
     const placement = draft.placements[protocol.id];
     if (!placement) {
       throw new Error(`Missing required placement for protocol ${protocol.id}.`);
     }
-    return protocolToManifest(protocol, placement);
+    return protocolToManifest(protocol, placement, placementPaths[index]);
   });
 
   return {

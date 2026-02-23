@@ -12,6 +12,7 @@ import {
 import {
   BoxRenderMode,
   HandleId,
+  PlannerBox,
   Point2,
   Rotation3,
   Vector3,
@@ -24,6 +25,8 @@ import {
   DEFAULT_BOX
 } from "@/features/contribution/types";
 import {
+  applyRotationChange,
+  applySizeChange,
   createPlacementMap,
   getPlacementForProtocol,
   savePlacementSnapshot
@@ -135,6 +138,14 @@ export const useContributionSession = (protocols: ContributionProtocolEntry[]) =
       }
     }));
   }, [activeProtocol, updateActivePlacement]);
+
+  const changeSize = useCallback((axis: keyof PlannerBox["size"], value: number) => {
+    updateActivePlacement((current) => applySizeChange(current, axis, value));
+  }, [updateActivePlacement]);
+
+  const changeRotation = useCallback((axis: keyof PlannerBox["rotation"], value: number) => {
+    updateActivePlacement((current) => applyRotationChange(current, axis, value));
+  }, [updateActivePlacement]);
 
   const beginDrag = useCallback((viewId: ViewId, point: Point2) => {
     if (!activePlacement) {
@@ -305,6 +316,8 @@ export const useContributionSession = (protocols: ContributionProtocolEntry[]) =
     setProtocolActive,
     setBoxRenderMode,
     changeParam,
+    changeSize,
+    changeRotation,
     beginDrag,
     moveDrag,
     endDrag,

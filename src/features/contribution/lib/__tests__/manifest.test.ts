@@ -65,7 +65,8 @@ describe("buildContributionManifest", () => {
     expect(manifest.views.axial.zipPath).toBe("images/axial.png");
     expect(manifest.views.sagittal.zipPath).toBe("images/sagittal.jpg");
     expect(manifest.views.coronal.zipPath).toBe("images/coronal.webp");
-    expect(manifest.protocols[0].placementZipPath).toBe("protocols/brain-t2-axial/placement.json");
+    expect(manifest.protocols[0].placementZipPath).toBe("protocols/01-brain-t2-axial/placement.json");
+    expect(manifest.protocols[1].placementZipPath).toBe("protocols/02-brain-flair/placement.json");
   });
 
   it("slugifies protocol ids safely", () => {
@@ -79,5 +80,27 @@ describe("buildContributionManifest", () => {
     draft.views.axial = null;
 
     expect(() => buildContributionManifest(draft, { sourceAppVersion: "0.1.0" })).toThrow(/Missing required image/);
+  });
+
+  it("builds unique placement paths when protocol slugs collide", () => {
+    const draft = makeDraft();
+    draft.protocols = [
+      {
+        ...draft.protocols[0],
+        id: "T1 Ax"
+      },
+      {
+        ...draft.protocols[1],
+        id: "t1-ax"
+      }
+    ];
+    draft.placements = {
+      "T1 Ax": draft.placements["brain t2 axial"],
+      "t1-ax": draft.placements["brain-flair"]
+    };
+
+    const manifest = buildContributionManifest(draft, { sourceAppVersion: "0.1.0" });
+    expect(manifest.protocols[0].placementZipPath).toBe("protocols/01-t1-ax/placement.json");
+    expect(manifest.protocols[1].placementZipPath).toBe("protocols/02-t1-ax-2/placement.json");
   });
 });

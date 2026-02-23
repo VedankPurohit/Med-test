@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyRotationChange,
+  applySizeChange,
   createPlacementMap,
   getPlacementForProtocol,
   savePlacementSnapshot
@@ -59,5 +61,21 @@ describe("contribution placement session", () => {
 
     const reloaded = getPlacementForProtocol(map, "p1");
     expect(reloaded?.box.center.x).toBe(0.3);
+  });
+
+  it("clamps size changes to allowed bounds", () => {
+    const updatedHigh = applySizeChange(makePlacement(0), "x", 9);
+    const updatedLow = applySizeChange(makePlacement(0), "y", -4);
+
+    expect(updatedHigh.box.size.x).toBe(1.8);
+    expect(updatedLow.box.size.y).toBe(0.2);
+  });
+
+  it("clamps rotation changes to allowed bounds", () => {
+    const updatedHigh = applyRotationChange(makePlacement(0), "rz", 300);
+    const updatedLow = applyRotationChange(makePlacement(0), "rx", -300);
+
+    expect(updatedHigh.box.rotation.rz).toBe(45);
+    expect(updatedLow.box.rotation.rx).toBe(-45);
   });
 });

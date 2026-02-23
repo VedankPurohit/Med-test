@@ -1,5 +1,7 @@
 import { ContributionPlacement, ContributionPlacementMap, DEFAULT_BOX } from "@/features/contribution/types";
+import { clamp } from "@/features/planner/lib/geometry";
 import { deepClone } from "@/features/planner/lib/scoring";
+import { PlannerBox } from "@/features/planner/types/planner";
 
 export type ContributionPlacementSnapshot = {
   protocolId: string | null;
@@ -48,3 +50,33 @@ export const getPlacementForProtocol = (
   }
   return deepClone(placement);
 };
+
+export const applySizeChange = (
+  placement: ContributionPlacement,
+  axis: keyof PlannerBox["size"],
+  value: number
+): ContributionPlacement => ({
+  ...placement,
+  box: {
+    ...placement.box,
+    size: {
+      ...placement.box.size,
+      [axis]: clamp(value, 0.2, 1.8)
+    }
+  }
+});
+
+export const applyRotationChange = (
+  placement: ContributionPlacement,
+  axis: keyof PlannerBox["rotation"],
+  value: number
+): ContributionPlacement => ({
+  ...placement,
+  box: {
+    ...placement.box,
+    rotation: {
+      ...placement.box.rotation,
+      [axis]: clamp(value, -45, 45)
+    }
+  }
+});

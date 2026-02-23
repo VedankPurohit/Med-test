@@ -56,7 +56,7 @@ describe("buildContributionZipBytes", () => {
     expect(files).toContain("images/axial.png");
     expect(files).toContain("images/sagittal.png");
     expect(files).toContain("images/coronal.png");
-    expect(files).toContain("protocols/brain-t2-axial/placement.json");
+    expect(files).toContain("protocols/01-brain-t2-axial/placement.json");
 
     const manifestText = await zip.file("manifest.json")!.async("string");
     expect(JSON.parse(manifestText).schemaVersion).toBe(1);
