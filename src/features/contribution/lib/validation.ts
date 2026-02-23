@@ -64,7 +64,7 @@ export const validateContributionDraft = (draft: ContributionDraft): ValidationI
     if (!finite(image.sizeBytes) || image.sizeBytes <= 0) {
       push(issues, "VIEW_SIZE_INVALID", `views.${viewId}.sizeBytes`, `Invalid file size for ${viewId} image.`);
     }
-    if (!image.dataUrl.startsWith("data:image/")) {
+    if (image.dataUrl && !image.dataUrl.startsWith("data:image/")) {
       push(issues, "VIEW_DATAURL_INVALID", `views.${viewId}.dataUrl`, `${viewId} image must be a valid image data URL.`);
     }
     if (!(image.bytes instanceof Uint8Array) || image.bytes.length === 0) {

@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { buildExamSubmissionSummary, haveVisitedAllSelectedProtocols } from "@/features/workstation/lib/examSummary";
+import { haveVisitedAllSelectedProtocols } from "@/features/workstation/lib/examSummary";
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
 
@@ -18,17 +18,42 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
     () => addedProtocols.filter((protocol) => protocol.status === "pending").length,
     [addedProtocols]
   );
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleCheck = () => {
-    planner.checkPlanning();
+    void planner.checkPlanning();
     setRightPanelTab('feedback');
   };
 
-  const handleSubmitExam = () => {
-    const summary = buildExamSubmissionSummary(addedProtocols, planner.getAllPlacements());
-    setSubmissionSummary(summary);
-    setRightPanelTab("feedback");
-    router.push("/report");
+  const handleSubmitExam = async () => {
+    try {
+      setSubmitError(null);
+      const response = await fetch("/api/v1/workstation/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          protocols: addedProtocols,
+          placements: planner.getAllPlacements()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Submit failed (${response.status}).`);
+      }
+
+      const data = await response.json();
+      if (!data.allowSubmit) {
+        return;
+      }
+
+      setSubmissionSummary(data.summary);
+      setRightPanelTab("feedback");
+      router.push("/report");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Submit failed.");
+    }
   };
 
   return (
@@ -39,12 +64,14 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
         style={{ borderBottom: '1px solid var(--chrome-border)' }}
       >
         <button
-          onClick={handleCheck}
+          onClick={() => void handleCheck()}
+          disabled={planner.isChecking}
           className="px-2 py-0.5 rounded text-[8px] cursor-pointer transition-colors"
           style={{
-            background: 'var(--accent-blue-dim)',
-            color: 'var(--accent-blue)',
-            border: '1px solid rgba(37,99,235,0.3)',
+            background: planner.isChecking ? "var(--chrome-surface-raised)" : 'var(--accent-blue-dim)',
+            color: planner.isChecking ? "var(--text-muted)" : 'var(--accent-blue)',
+            border: planner.isChecking ? "1px solid var(--chrome-border)" : '1px solid rgba(37,99,235,0.3)',
+            cursor: planner.isChecking ? "not-allowed" : "pointer"
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'var(--accent-blue)';
@@ -55,7 +82,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
             e.currentTarget.style.color = 'var(--accent-blue)';
           }}
         >
-          Check Planning
+          {planner.isChecking ? "Checking..." : "Check Planning"}
         </button>
         <button
           onClick={planner.resetPlan}
@@ -70,7 +97,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
           Reset
         </button>
         <button
-          onClick={handleSubmitExam}
+          onClick={() => void handleSubmitExam()}
           type="button"
           disabled={!allVisited}
           className="px-2 py-0.5 rounded text-[8px] transition-colors ml-auto"
@@ -88,6 +115,12 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
 
       {/* Score display */}
       <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1.5">
+        {submitError && (
+          <div className="mb-2 text-[8px]" style={{ color: "var(--fb-bad)" }}>
+            {submitError}
+          </div>
+        )}
+
         {!allVisited && addedProtocols.length > 0 && (
           <div className="mb-2 text-[8px]" style={{ color: "var(--text-muted)" }}>
             Visit all selected protocols to unlock submit ({remainingProtocols} remaining).

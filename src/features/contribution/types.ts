@@ -99,6 +99,34 @@ export type ContributionManifestV1 = {
   };
 };
 
+export type ContributionExportPayload = {
+  createdAt: string;
+  sourceAppVersion: string;
+  phiAttestation: boolean;
+  anatomy: ContributionAnatomy;
+  protocols: ContributionProtocolEntry[];
+  placements: ContributionPlacementMap;
+};
+
+export type ContributionExportErrorCode =
+  | "BAD_MULTIPART"
+  | "MISSING_PAYLOAD"
+  | "INVALID_PAYLOAD"
+  | "MISSING_VIEW_FILE"
+  | "INVALID_VIEW_FILE"
+  | "VIEW_FILE_TOO_LARGE"
+  | "TOTAL_FILE_SIZE_TOO_LARGE"
+  | "PHI_ATTESTATION_REQUIRED"
+  | "VALIDATION_FAILED"
+  | "RATE_LIMITED"
+  | "EXPORT_FAILED";
+
+export type ContributionExportError = {
+  code: ContributionExportErrorCode;
+  message: string;
+  details?: unknown;
+};
+
 export const DEFAULT_BOX: PlannerBox = {
   center: { x: 0, y: 0, z: 0 },
   size: { x: 0.6, y: 0.6, z: 0.6 },

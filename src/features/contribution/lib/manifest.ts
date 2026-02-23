@@ -15,6 +15,16 @@ const MIME_EXT: Record<string, string> = {
   "image/svg+xml": "svg"
 };
 
+const sanitizeFileName = (value: string): string => {
+  const base = value.split(/[\\/]/).pop() ?? "";
+  const clean = base
+    .trim()
+    .replace(/[^\w.-]+/g, "_")
+    .replace(/^_+/, "")
+    .replace(/_+$/, "");
+  return clean || "image.bin";
+};
+
 export const slugifyId = (value: string): string => {
   const trimmed = value.trim().toLowerCase();
   const slug = trimmed
@@ -29,7 +39,8 @@ const extensionForImage = (mimeType: string, fileName: string): string => {
     return MIME_EXT[mimeType];
   }
 
-  const ext = fileName.split(".").pop()?.toLowerCase();
+  const safeFileName = sanitizeFileName(fileName);
+  const ext = safeFileName.split(".").pop()?.toLowerCase();
   if (ext && /^[a-z0-9]+$/.test(ext)) {
     return ext;
   }
@@ -41,12 +52,13 @@ const viewToManifest = (
   viewId: ViewId,
   image: NonNullable<ContributionDraft["views"][ViewId]>
 ): ContributionManifestView => {
-  const ext = extensionForImage(image.mimeType, image.fileName);
+  const safeFileName = sanitizeFileName(image.fileName);
+  const ext = extensionForImage(image.mimeType, safeFileName);
 
   return {
     viewId,
     zipPath: `images/${viewId}.${ext}`,
-    originalFileName: image.fileName,
+    originalFileName: safeFileName,
     mimeType: image.mimeType,
     sizeBytes: image.sizeBytes
   };

@@ -12,7 +12,7 @@ import {
   inPlaneAngle,
   VIEW_CONFIG
 } from "@/features/planner/lib/geometry";
-import { computeScore, deepClone, withFallbackTarget } from "@/features/planner/lib/scoring";
+import { deepClone, withFallbackTarget } from "@/features/planner/lib/scoring";
 import {
   getSavedPlacement,
   placementKey,
@@ -35,6 +35,8 @@ import {
   PlannerBox,
   PlannerParams,
   PlannerScore,
+  PlannerScoreRequest,
+  PlannerScoreResponse,
   Point2,
   ProtocolConfig,
   Rotation3,
@@ -87,11 +89,13 @@ export const usePlannerState = () => {
   const [uploads, setUploads] = useState<UploadMap>(createEmptyUploadMap);
   const [calibrations, setCalibrations] = useState<CalibrationMap>(createEmptyCalibrations);
   const [showTarget, setShowTarget] = useState(false);
-  const [showTargetAlways, setShowTargetAlways] = useState(false);
+  const [showTargetAlwaysState, setShowTargetAlwaysState] = useState(false);
+  const [canRevealTarget, setCanRevealTarget] = useState(false);
   const [instructorMode, setInstructorMode] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>("Choose case/protocol and start planning.");
   const [statusKind, setStatusKind] = useState<"info" | "warn">("info");
   const [lastScore, setLastScore] = useState<PlannerScore | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
   const [savedPlacements, setSavedPlacements] = useState<PlacementMap>({});
 
   // Refs for stable callbacks that need to read current state without re-creating
@@ -172,6 +176,8 @@ export const usePlannerState = () => {
       }
       setDrag(null);
       setShowTarget(false);
+      setShowTargetAlwaysState(false);
+      setCanRevealTarget(false);
       setStatusKind("info");
     },
     []
@@ -222,6 +228,8 @@ export const usePlannerState = () => {
       setProtocolId(nextProtocol.id);
       setDrag(null);
       setShowTarget(false);
+      setShowTargetAlwaysState(false);
+      setCanRevealTarget(false);
 
       // Restore saved placement or use initial
       const saved = getSavedPlacement(nextPlacements, curCaseId, nextProtocolId);
@@ -247,6 +255,15 @@ export const usePlannerState = () => {
     setStatusMessage("Localizer set changed.");
     setStatusKind("info");
   }, []);
+
+  const setShowTargetAlways = useCallback((next: boolean) => {
+    if (next && !(canRevealTarget || instructorMode)) {
+      setStatusKind("warn");
+      setStatusMessage("Run scoring first to reveal the target.");
+      return;
+    }
+    setShowTargetAlwaysState(next);
+  }, [canRevealTarget, instructorMode]);
 
   const changeParam = useCallback(
     (key: string, value: number) => {
@@ -509,28 +526,63 @@ export const usePlannerState = () => {
     [box]
   );
 
-  const checkPlanning = useCallback(() => {
+  const checkPlanning = useCallback(async () => {
     if (!caseId || !currentProtocol || !box || !params) {
       return;
     }
 
-    const score = computeScore(
-      currentProtocol,
+    const calibration = calibrations[protocolKey(caseId, currentProtocol.id)];
+    const payload: PlannerScoreRequest = {
+      caseId,
+      protocolId: currentProtocol.id,
       box,
       params,
-      Boolean(calibrations[protocolKey(caseId, currentProtocol.id)]),
-      caseId
-    );
+      calibrationTarget: calibration,
+      instructorMode
+    };
 
-    setShowTarget(true);
-    setLastScore(score);
-    setStatusKind(score.pass ? "info" : "warn");
-    setStatusMessage(
-      score.pass
-        ? `PASS - ${score.finalScorePercent}% overall`
-        : `NOT YET - ${score.finalScorePercent}% overall`
-    );
-  }, [box, calibrations, caseId, currentProtocol, params]);
+    setIsChecking(true);
+
+    try {
+      const response = await fetch("/api/v1/planner/score", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        let message = `Scoring failed (${response.status}).`;
+        try {
+          const data = await response.json();
+          if (typeof data?.message === "string") {
+            message = data.message;
+          }
+        } catch {
+          // Keep fallback message.
+        }
+        throw new Error(message);
+      }
+
+      const data = (await response.json()) as PlannerScoreResponse;
+      const revealTarget = Boolean(data.revealTarget) || instructorMode;
+      setCanRevealTarget(revealTarget);
+      setShowTarget(revealTarget);
+      setLastScore(data.score);
+      setStatusKind(data.score.pass ? "info" : "warn");
+      setStatusMessage(
+        data.score.pass
+          ? `PASS - ${data.score.finalScorePercent}% overall`
+          : `NOT YET - ${data.score.finalScorePercent}% overall`
+      );
+    } catch (error) {
+      setStatusKind("warn");
+      setStatusMessage(error instanceof Error ? error.message : "Scoring failed.");
+    } finally {
+      setIsChecking(false);
+    }
+  }, [box, calibrations, caseId, currentProtocol, instructorMode, params]);
 
   const resetPlan = useCallback(() => {
     if (!baseProtocol) {
@@ -540,6 +592,8 @@ export const usePlannerState = () => {
     setParams(deepClone(baseProtocol.initial.params));
     setLastScore(null);
     setShowTarget(false);
+    setShowTargetAlwaysState(false);
+    setCanRevealTarget(false);
     setStatusMessage("Reset to protocol start.");
     setStatusKind("info");
   }, [baseProtocol]);
@@ -599,6 +653,7 @@ export const usePlannerState = () => {
     });
 
     setShowTarget(true);
+    setCanRevealTarget(true);
     setStatusKind("info");
     setStatusMessage("Instructor calibration target saved for this protocol.");
   }, [box, caseId, currentProtocol, instructorMode, params]);
@@ -622,6 +677,9 @@ export const usePlannerState = () => {
     });
 
     setStatusKind("info");
+    setCanRevealTarget(false);
+    setShowTarget(false);
+    setShowTargetAlwaysState(false);
     setStatusMessage("Calibration reset. Default protocol target active.");
   }, [caseId, currentProtocol, instructorMode]);
 
@@ -684,12 +742,14 @@ export const usePlannerState = () => {
     params,
     showTarget,
     setShowTarget,
-    showTargetAlways,
+    showTargetAlways: showTargetAlwaysState,
     setShowTargetAlways,
+    canRevealTarget,
     instructorMode,
     setInstructorMode,
     statusMessage,
     statusKind,
+    isChecking,
     lastScore,
     calibrationActive,
     beginDrag,

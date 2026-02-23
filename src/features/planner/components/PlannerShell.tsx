@@ -292,6 +292,7 @@ export const PlannerShell = () => {
               <input
                 type="checkbox"
                 checked={planner.showTargetAlways}
+                disabled={!(planner.canRevealTarget || planner.instructorMode)}
                 onChange={(event) => planner.setShowTargetAlways(event.target.checked)}
               />
               Always show target overlay
@@ -350,7 +351,9 @@ export const PlannerShell = () => {
           </section>
 
           <section className="card row">
-            <button onClick={planner.checkPlanning}>Check Planning</button>
+            <button onClick={() => void planner.checkPlanning()} disabled={planner.isChecking}>
+              {planner.isChecking ? "Checking..." : "Check Planning"}
+            </button>
             <button onClick={planner.resetPlan}>Reset</button>
           </section>
 

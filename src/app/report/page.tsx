@@ -1,13 +1,19 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 
 export default function ReportPage() {
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
   const summary = useWorkstationStore((s) => s.submissionSummary);
   const resetExam = useWorkstationStore((s) => s.resetExam);
   const clearSubmissionSummary = useWorkstationStore((s) => s.clearSubmissionSummary);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const handleBackToWorkstation = () => {
     router.push('/');
@@ -18,6 +24,21 @@ export default function ReportPage() {
     resetExam();
     router.push('/');
   };
+
+  if (!hydrated) {
+    return (
+      <main className="min-h-screen p-6" style={{ background: 'var(--chrome-surface)' }}>
+        <div className="mx-auto max-w-3xl rounded border p-4" style={{ borderColor: 'var(--chrome-border)' }}>
+          <h1 className="text-sm uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>
+            Session Report
+          </h1>
+          <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Loading report...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   if (!summary) {
     return (

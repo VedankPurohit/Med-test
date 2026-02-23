@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Open: `http://localhost:3000`
+Open: `http://localhost:3012`
 
 ## Architecture
 
@@ -54,6 +54,9 @@ Open: `http://localhost:3000`
 - 3-panel screenshot import (`Sag|Cor|Ax` and other orders)
 - Instructor calibration mode
 - Score evaluation + JSON export
+- `/createNew` contribution studio with server-side ZIP export API (`POST /api/v1/contributions/export`)
+- Server-side planner scoring API (`POST /api/v1/planner/score`)
+- Server-side workstation submission summary API (`POST /api/v1/workstation/submit`)
 
 ## Localizer images
 

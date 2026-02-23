@@ -47,3 +47,15 @@
 - Decision: Keep `/createNew` placement state in a protocol-agnostic session helper (`useContributionSession` + pure session utilities) instead of coupling to case-bound planner orchestration.
 - Why: Contribution workflows must support existing and custom protocols across arbitrary anatomy labels while preserving deterministic per-protocol save/restore behavior.
 - Consequence: Contribution capture can evolve independently from workstation runtime flow, while still reusing planner canvas/geometry primitives.
+
+## ADR-009: Server-side contribution export boundary
+- Status: Accepted
+- Decision: Move `/createNew` ZIP generation behind a server API (`POST /api/v1/contributions/export`) with multipart parsing, payload/file validation, PHI attestation gate, and basic request rate limiting.
+- Why: Client-only export made validation and packaging logic fully inspectable and harder to control for abuse/compliance in public testing.
+- Consequence: Browser UI remains for data entry/placement, while export contract enforcement and ZIP generation run server-side under a versioned API.
+
+## ADR-010: Server-owned scoring and submission summary responses
+- Status: Accepted
+- Decision: Move planner score evaluation and workstation submission summary generation behind server APIs (`POST /api/v1/planner/score`, `POST /api/v1/workstation/submit`) and consume those responses from UI.
+- Why: Keeping scoring/submission purely client-side made behavior harder to control and evolve consistently for public deployment.
+- Consequence: UI still manages interaction state, but score/reveal policy and summary computation are now enforced by server endpoints.

@@ -143,6 +143,21 @@ export type PlannerScore = {
   };
 };
 
+export type PlannerScoreRequest = {
+  caseId: CaseId;
+  protocolId: string;
+  box: PlannerBox;
+  params: ParameterSet;
+  calibrationTarget?: ProtocolTarget;
+  instructorMode?: boolean;
+};
+
+export type PlannerScoreResponse = {
+  score: PlannerScore;
+  revealTarget: boolean;
+  revealReason: "scored" | "instructor";
+};
+
 export type UploadMap = Record<CaseId, Record<ViewId, string | null>>;
 export type CalibrationMap = Record<string, ProtocolTarget>;
 

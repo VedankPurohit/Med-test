@@ -19,6 +19,7 @@ const EXAMCARD_TO_PLANNER: Record<string, { caseId: CaseId; plannerProtocolId: s
   // Dorsal spine (lumbar)
   'spine-sagittal-t1-tse': { caseId: 'lspine', plannerProtocolId: 'lspine_sag_t1' },
   'spine-sagittal-stir':   { caseId: 'lspine', plannerProtocolId: 'lspine_sag_stir' },
+  'spine-coronal-stir':    { caseId: 'lspine', plannerProtocolId: 'lspine_cor_stir' },
   'spine-axial-t2-tse':    { caseId: 'lspine', plannerProtocolId: 'lspine_ax_t2' },
   // Neck (cervical)
   'neck-sag-t2':           { caseId: 'cspine', plannerProtocolId: 'cspine_sag_t2' },

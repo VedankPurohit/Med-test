@@ -190,6 +190,7 @@ function CanvasToolbar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge>
           <input
             type="checkbox"
             checked={planner.showTargetAlways}
+            disabled={!(planner.canRevealTarget || planner.instructorMode)}
             onChange={(e) => planner.setShowTargetAlways(e.target.checked)}
             className="cursor-pointer"
             style={{ accentColor: 'var(--accent-blue)' }}

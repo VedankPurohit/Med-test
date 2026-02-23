@@ -87,6 +87,7 @@ describe("examcards", () => {
         f.children.filter(isProtocol).map((c) => c.id)
       );
       expect(allIds.length).toBeGreaterThan(0);
+      expect(allIds).toContain("spine-coronal-stir");
       // Should not contain brain protocols
       expect(allIds.some((id) => id.startsWith("axial-"))).toBe(false);
     });

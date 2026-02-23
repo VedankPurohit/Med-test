@@ -33,6 +33,7 @@ const EXAM_CARDS: ExamCardFolder[] = [
       { id: 'spine-sagittal-t2-tse', label: 'Sag T2 TSE', shortName: 'Sag T2', orientation: 'SAG', region: 'spine', estimatedTime: '3:00' },
       { id: 'spine-sagittal-t1-tse', label: 'Sag T1 TSE', shortName: 'Sag T1', orientation: 'SAG', region: 'spine', estimatedTime: '2:45' },
       { id: 'spine-sagittal-stir', label: 'Sag STIR', shortName: 'Sag STIR', orientation: 'SAG', region: 'spine', estimatedTime: '3:30' },
+      { id: 'spine-coronal-stir', label: 'Cor STIR', shortName: 'Cor STIR', orientation: 'COR', region: 'spine', estimatedTime: '3:20' },
       { id: 'spine-axial-t2-tse', label: 'Ax T2 TSE', shortName: 'Ax T2', orientation: 'TRA', region: 'spine', estimatedTime: '2:30' },
       { id: 'spine-axial-t1-tse', label: 'Ax T1 TSE', shortName: 'Ax T1', orientation: 'TRA', region: 'spine', estimatedTime: '2:00' },
     ],

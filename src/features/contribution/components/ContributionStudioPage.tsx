@@ -7,14 +7,16 @@ import { BoxRenderMode, HandleId, PlannerBox, ViewId } from "@/features/planner/
 import { ORIENTATION_LABELS, ViewType } from "@/features/workstation/types/mri";
 import { useContributionSession } from "@/features/contribution/hooks/useContributionSession";
 import { EXISTING_PROTOCOL_CATALOG, cloneProtocolEntry } from "@/features/contribution/lib/catalog";
-import { buildContributionZipBlob, downloadBlob } from "@/features/contribution/lib/export";
-import { buildContributionManifest, slugifyId } from "@/features/contribution/lib/manifest";
+import { downloadBlob } from "@/features/contribution/lib/export";
+import { slugifyId } from "@/features/contribution/lib/manifest";
 import { readFileAsBytes, readFileAsDataUrl } from "@/features/contribution/lib/media";
 import { validateContributionDraft } from "@/features/contribution/lib/validation";
 import { APP_VERSION } from "@/lib/appVersion";
 import {
   CONTRIBUTION_ANATOMY_TYPES,
   ContributionAnatomyType,
+  ContributionExportError,
+  ContributionExportPayload,
   ContributionProtocolEntry,
   ValidationIssue,
   emptyViews
@@ -43,6 +45,7 @@ function TopBar({
   statusMessage,
   statusKind,
   canExport,
+  isExporting,
   onExport
 }: {
   selectedCount: number;
@@ -50,6 +53,7 @@ function TopBar({
   statusMessage: string;
   statusKind: "info" | "warn";
   canExport: boolean;
+  isExporting: boolean;
   onExport: () => void;
 }) {
   return (
@@ -96,17 +100,17 @@ function TopBar({
 
       <button
         onClick={onExport}
-        disabled={!canExport}
+        disabled={!canExport || isExporting}
         className="px-3 py-1 rounded text-[9px] font-medium transition-colors"
         style={{
-          background: canExport ? "var(--accent-blue)" : "var(--chrome-surface-raised)",
-          border: `1px solid ${canExport ? "var(--accent-blue)" : "var(--chrome-border)"}`,
-          color: canExport ? "#fff" : "var(--text-muted)",
-          cursor: canExport ? "pointer" : "not-allowed",
-          boxShadow: canExport ? "var(--glow-blue)" : "none"
+          background: canExport && !isExporting ? "var(--accent-blue)" : "var(--chrome-surface-raised)",
+          border: `1px solid ${canExport && !isExporting ? "var(--accent-blue)" : "var(--chrome-border)"}`,
+          color: canExport && !isExporting ? "#fff" : "var(--text-muted)",
+          cursor: canExport && !isExporting ? "pointer" : "not-allowed",
+          boxShadow: canExport && !isExporting ? "var(--glow-blue)" : "none"
         }}
       >
-        Export ZIP
+        {isExporting ? "Exporting..." : "Export ZIP"}
       </button>
     </div>
   );
@@ -323,6 +327,8 @@ const subBtnStyle: CSSProperties = {
 };
 
 const makeSpecKey = (value: string): string => value.trim().replace(/\s+/g, "");
+const MAX_VIEW_FILE_BYTES = 15 * 1024 * 1024;
+const ALLOWED_VIEW_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 export default function ContributionStudioPage() {
   const [anatomyType, setAnatomyType] = useState<ContributionAnatomyType>("brain");
@@ -333,6 +339,8 @@ export default function ContributionStudioPage() {
   const [statusMessage, setStatusMessage] = useState("Complete setup, place each protocol, then export.");
   const [statusKind, setStatusKind] = useState<"info" | "warn">("info");
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
+  const [phiAttested, setPhiAttested] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [customProtocolLabel, setCustomProtocolLabel] = useState("");
   const [customProtocolId, setCustomProtocolId] = useState("");
@@ -381,6 +389,18 @@ export default function ContributionStudioPage() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) {
+      return;
+    }
+
+    if (!ALLOWED_VIEW_MIME_TYPES.has(file.type)) {
+      setStatusKind("warn");
+      setStatusMessage(`Unsupported file type for ${viewId}. Use PNG/JPEG/WEBP.`);
+      return;
+    }
+
+    if (file.size > MAX_VIEW_FILE_BYTES) {
+      setStatusKind("warn");
+      setStatusMessage(`${viewId.toUpperCase()} image exceeds 15MB.`);
       return;
     }
 
@@ -516,21 +536,67 @@ export default function ContributionStudioPage() {
       return;
     }
 
+    if (!phiAttested) {
+      setStatusKind("warn");
+      setStatusMessage("PHI attestation is required before export.");
+      return;
+    }
+
     try {
-      const manifest = buildContributionManifest(draftForValidation, { sourceAppVersion: APP_VERSION });
-      const blob = await buildContributionZipBlob(manifest, {
-        axial: views.axial!.bytes,
-        sagittal: views.sagittal!.bytes,
-        coronal: views.coronal!.bytes
+      if (!views.axial || !views.sagittal || !views.coronal) {
+        setStatusKind("warn");
+        setStatusMessage("All three images are required.");
+        return;
+      }
+
+      setIsExporting(true);
+
+      const payload: ContributionExportPayload = {
+        createdAt: draftForValidation.createdAt,
+        sourceAppVersion: APP_VERSION,
+        phiAttestation: true,
+        anatomy: draftForValidation.anatomy,
+        protocols: draftForValidation.protocols,
+        placements: draftForValidation.placements
+      };
+
+      const formData = new FormData();
+      formData.append("payload", JSON.stringify(payload));
+      formData.append("axial", new File([views.axial.bytes], views.axial.fileName, { type: views.axial.mimeType }));
+      formData.append("sagittal", new File([views.sagittal.bytes], views.sagittal.fileName, { type: views.sagittal.mimeType }));
+      formData.append("coronal", new File([views.coronal.bytes], views.coronal.fileName, { type: views.coronal.mimeType }));
+
+      const response = await fetch("/api/v1/contributions/export", {
+        method: "POST",
+        body: formData
       });
 
-      const fileName = `contribution-${manifest.anatomy.primaryType}-${Date.now()}.zip`;
+      if (!response.ok) {
+        let message = `Export failed (${response.status}).`;
+        try {
+          const data = (await response.json()) as ContributionExportError;
+          if (data?.message) {
+            message = data.message;
+          }
+        } catch {
+          // no-op: keep fallback message
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const headerName = response.headers.get("x-export-file-name");
+      const fallbackName = `contribution-${draftForValidation.anatomy.primaryType}-${Date.now()}.zip`;
+      const fileName = headerName && headerName.trim().length > 0 ? headerName : fallbackName;
+
       downloadBlob(fileName, blob);
       setStatusKind("info");
       setStatusMessage(`ZIP exported: ${fileName}`);
     } catch (error) {
       setStatusKind("warn");
       setStatusMessage(error instanceof Error ? error.message : "Export failed.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -544,7 +610,8 @@ export default function ContributionStudioPage() {
         issueCount={issues.length}
         statusMessage={statusMessage}
         statusKind={statusKind}
-        canExport={issues.length === 0}
+        canExport={issues.length === 0 && phiAttested}
+        isExporting={isExporting}
         onExport={() => void exportZip()}
       />
 
@@ -874,9 +941,27 @@ export default function ContributionStudioPage() {
               </div>
             )}
 
+            <label className="flex items-start gap-2 mt-3 text-[9px]" style={{ color: "var(--text-secondary)" }}>
+              <input
+                type="checkbox"
+                checked={phiAttested}
+                onChange={(event) => setPhiAttested(event.target.checked)}
+                className="mt-0.5"
+              />
+              <span>I confirm these uploads are de-identified and contain no PHI.</span>
+            </label>
+
             <div className="mt-3 flex gap-2 flex-wrap">
-              <button onClick={() => void exportZip()} disabled={issues.length > 0} style={{ ...actionBtnStyle, opacity: issues.length === 0 ? 1 : 0.45, cursor: issues.length === 0 ? "pointer" : "not-allowed" }}>
-                Export ZIP
+              <button
+                onClick={() => void exportZip()}
+                disabled={issues.length > 0 || !phiAttested || isExporting}
+                style={{
+                  ...actionBtnStyle,
+                  opacity: issues.length === 0 && phiAttested && !isExporting ? 1 : 0.45,
+                  cursor: issues.length === 0 && phiAttested && !isExporting ? "pointer" : "not-allowed"
+                }}
+              >
+                {isExporting ? "Exporting..." : "Export ZIP"}
               </button>
 
               {activeProtocol && (

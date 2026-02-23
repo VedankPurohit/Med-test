@@ -26,6 +26,11 @@ describe("protocolRegistry", () => {
       expect(lumbar).not.toBeNull();
       expect(lumbar!.caseId).toBe("lspine");
 
+      const corStir = resolveProtocol("spine-coronal-stir");
+      expect(corStir).not.toBeNull();
+      expect(corStir!.caseId).toBe("lspine");
+      expect(corStir!.protocolConfig.id).toBe("lspine_cor_stir");
+
       const cervical = resolveProtocol("neck-sag-t2");
       expect(cervical).not.toBeNull();
       expect(cervical!.caseId).toBe("cspine");
@@ -52,6 +57,7 @@ describe("protocolRegistry", () => {
     it("returns true for mapped protocols", () => {
       expect(hasPlannerDefinition("axial-t2-tse")).toBe(true);
       expect(hasPlannerDefinition("spine-sagittal-t2-tse")).toBe(true);
+      expect(hasPlannerDefinition("spine-coronal-stir")).toBe(true);
       expect(hasPlannerDefinition("neck-sag-t2")).toBe(true);
     });
 
@@ -76,6 +82,7 @@ describe("protocolRegistry", () => {
     it("matches spine protocols to their specific sub-region", () => {
       expect(isForCase("spine-sagittal-t2-tse", "tspine")).toBe(true);
       expect(isForCase("spine-sagittal-t1-tse", "lspine")).toBe(true);
+      expect(isForCase("spine-coronal-stir", "lspine")).toBe(true);
       expect(isForCase("neck-sag-t2", "cspine")).toBe(true);
     });
 

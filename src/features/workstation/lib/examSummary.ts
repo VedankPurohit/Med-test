@@ -27,6 +27,17 @@ export type ExamSubmissionSummary = {
   protocols: ProtocolSummaryEntry[];
 };
 
+export type BuildSubmissionSummaryRequest = {
+  protocols: ProtocolListItem[];
+  placements: PlacementMap;
+};
+
+export type BuildSubmissionSummaryResponse = {
+  summary: ExamSubmissionSummary;
+  allowSubmit: boolean;
+  submitReason: "all-visited" | "blocked";
+};
+
 const getProtocolScore = (score: PlannerScore | null | undefined): number | null => {
   if (!score) {
     return null;
