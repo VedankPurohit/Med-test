@@ -96,6 +96,7 @@ export default function PlanningCanvasPanel({
           viewId={viewId}
           boxRenderMode={bridge.boxRenderMode}
           imageSrc={planner.getImageSource(viewId)}
+          fallbackImageSrc={planner.localizerSet?.views[viewId] ?? ""}
           box={hasActiveProtocol ? planner.box : null}
           targetBox={hasActiveProtocol ? (planner.currentProtocol?.target ?? null) : null}
           showTarget={showTarget}
