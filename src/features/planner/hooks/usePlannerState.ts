@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CASE_MAP, CASES } from "@/features/planner/data/planner-config";
 import {
   FLAT_VIEW_AXES,
@@ -50,6 +50,12 @@ const ROTATION_AXIS_FOR_VIEW: Record<ViewId, keyof Rotation3> = {
   coronal: "ry"
 };
 
+type SavedPlacement = {
+  box: PlannerBox;
+  params: Record<string, number>;
+  lastScore: PlannerScore | null;
+};
+
 const protocolKey = (caseId: CaseId, protocolId: string): string => `${caseId}:${protocolId}`;
 
 const getProtocolById = (caseConfig: CaseConfig, protocolId: string | null): ProtocolConfig => {
@@ -74,6 +80,21 @@ export const usePlannerState = () => {
   const [statusMessage, setStatusMessage] = useState<string>("Choose case/protocol and start planning.");
   const [statusKind, setStatusKind] = useState<"info" | "warn">("info");
   const [lastScore, setLastScore] = useState<PlannerScore | null>(null);
+  const [savedPlacements, setSavedPlacements] = useState<Record<string, SavedPlacement>>({});
+
+  // Refs for stable callbacks that need to read current state without re-creating
+  const boxRef = useRef(box);
+  boxRef.current = box;
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+  const lastScoreRef = useRef(lastScore);
+  lastScoreRef.current = lastScore;
+  const caseIdRef = useRef(caseId);
+  caseIdRef.current = caseId;
+  const protocolIdRef = useRef(protocolId);
+  protocolIdRef.current = protocolId;
+  const savedPlacementsRef = useRef(savedPlacements);
+  savedPlacementsRef.current = savedPlacements;
 
   useEffect(() => {
     setUploads(readJsonStorage(STORAGE_KEYS.uploads, createEmptyUploadMap()));
@@ -126,20 +147,64 @@ export const usePlannerState = () => {
     []
   );
 
+  const saveCurrent = useCallback(() => {
+    const id = caseIdRef.current;
+    const pid = protocolIdRef.current;
+    const b = boxRef.current;
+    const p = paramsRef.current;
+    if (!id || !pid || !b || !p) return;
+    const key = protocolKey(id, pid);
+    setSavedPlacements((prev) => ({
+      ...prev,
+      [key]: { box: deepClone(b), params: deepClone(p), lastScore: lastScoreRef.current },
+    }));
+  }, []);
+
   const selectProtocol = useCallback(
     (nextProtocolId: string) => {
       if (!caseConfig) {
         return;
       }
+
+      // Save current placement before switching (skip if same protocol, e.g. after selectCase)
+      const curCaseId = caseIdRef.current;
+      const curProtocolId = protocolIdRef.current;
+      const curBox = boxRef.current;
+      const curParams = paramsRef.current;
+      if (curCaseId && curProtocolId && curProtocolId !== nextProtocolId && curBox && curParams) {
+        const currentKey = protocolKey(curCaseId, curProtocolId);
+        setSavedPlacements((prev) => ({
+          ...prev,
+          [currentKey]: { box: deepClone(curBox), params: deepClone(curParams), lastScore: lastScoreRef.current },
+        }));
+      }
+
+      if (!curCaseId) {
+        return;
+      }
+
       const nextProtocol = getProtocolById(caseConfig, nextProtocolId);
+      const nextKey = protocolKey(curCaseId, nextProtocolId);
+
       setProtocolId(nextProtocol.id);
-      setBox(deepClone(nextProtocol.initial));
-      setParams(deepClone(nextProtocol.initial.params));
       setDrag(null);
-      setLastScore(null);
       setShowTarget(false);
-      setStatusMessage("Protocol updated. Reposition box and check planning.");
-      setStatusKind("info");
+
+      // Restore saved placement or use initial
+      const saved = savedPlacementsRef.current[nextKey];
+      if (saved) {
+        setBox(deepClone(saved.box));
+        setParams(deepClone(saved.params));
+        setLastScore(saved.lastScore);
+        setStatusMessage("Restored previous placement.");
+        setStatusKind("info");
+      } else {
+        setBox(deepClone(nextProtocol.initial));
+        setParams(deepClone(nextProtocol.initial.params));
+        setLastScore(null);
+        setStatusMessage("Protocol updated. Reposition box and check planning.");
+        setStatusKind("info");
+      }
     },
     [caseConfig]
   );
@@ -557,6 +622,22 @@ export const usePlannerState = () => {
     [caseId, localizerSet, uploads]
   );
 
+  const getAllPlacements = useCallback(() => {
+    const placements = { ...savedPlacementsRef.current };
+    const id = caseIdRef.current;
+    const pid = protocolIdRef.current;
+    const b = boxRef.current;
+    const p = paramsRef.current;
+    if (id && pid && b && p) {
+      placements[protocolKey(id, pid)] = {
+        box: deepClone(b),
+        params: deepClone(p),
+        lastScore: lastScoreRef.current,
+      };
+    }
+    return placements;
+  }, []);
+
   const calibrationActive = useMemo(() => {
     if (!caseId || !currentProtocol) {
       return false;
@@ -601,6 +682,9 @@ export const usePlannerState = () => {
     setCalibrationForCurrent,
     resetCalibrationForCurrent,
     exportLastScore,
-    getImageSource
+    getImageSource,
+    savedPlacements,
+    saveCurrent,
+    getAllPlacements
   };
 };

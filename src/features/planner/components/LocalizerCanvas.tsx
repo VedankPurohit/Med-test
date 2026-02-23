@@ -18,9 +18,11 @@ type LocalizerCanvasProps = {
   onMoveDrag: (viewId: ViewId, point: Point2) => void;
   onEndDrag: () => void;
   onHitTest?: (viewId: ViewId, point: Point2, mode: BoxRenderMode) => HandleId | null;
+  width?: number;
+  height?: number;
 };
 
-const CANVAS_SIZE = 320;
+const DEFAULT_CANVAS_SIZE = 320;
 
 export const LocalizerCanvas = ({
   viewId,
@@ -33,12 +35,28 @@ export const LocalizerCanvas = ({
   onBeginDrag,
   onMoveDrag,
   onEndDrag,
-  onHitTest
+  onHitTest,
+  width: widthProp,
+  height: heightProp
 }: LocalizerCanvasProps) => {
+  const canvasWidth = widthProp ?? DEFAULT_CANVAS_SIZE;
+  const canvasHeight = heightProp ?? DEFAULT_CANVAS_SIZE;
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [hoveredHandle, setHoveredHandle] = useState<HandleId | null>(null);
+
+  // Release pointer capture if component unmounts mid-drag
+  useEffect(() => {
+    return () => {
+      if (canvasRef.current && pointerIdRef.current !== null &&
+          canvasRef.current.hasPointerCapture(pointerIdRef.current)) {
+        canvasRef.current.releasePointerCapture(pointerIdRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -70,8 +88,8 @@ export const LocalizerCanvas = ({
       return;
     }
 
-    drawBackground(ctx, image, CANVAS_SIZE, CANVAS_SIZE);
-    drawGrid(ctx, CANVAS_SIZE, CANVAS_SIZE);
+    drawBackground(ctx, image, canvasWidth, canvasHeight);
+    drawGrid(ctx, canvasWidth, canvasHeight);
 
     if (showTarget && targetBox) {
       drawOutlineForMode(ctx, targetBox, viewId, boxRenderMode, {
@@ -79,7 +97,7 @@ export const LocalizerCanvas = ({
         lineWidth: 1.5,
         dashed: true,
         alpha: 0.8
-      });
+      }, canvasWidth, canvasHeight);
     }
 
     if (box) {
@@ -88,21 +106,21 @@ export const LocalizerCanvas = ({
         lineWidth: editable ? 2.8 : 2,
         dashed: false,
         alpha: 1
-      });
+      }, canvasWidth, canvasHeight);
 
       if (editable && boxRenderMode === "flat2d") {
-        drawHandles(ctx, box, viewId, hoveredHandle);
+        drawHandles(ctx, box, viewId, hoveredHandle, canvasWidth, canvasHeight);
       }
     }
 
     if (!editable) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      ctx.fillRect(0, CANVAS_SIZE - 26, CANVAS_SIZE, 26);
+      ctx.fillRect(0, canvasHeight - 26, canvasWidth, 26);
       ctx.fillStyle = "#f4f7fb";
       ctx.font = "12px sans-serif";
-      ctx.fillText("Derived from shared 3D prescription", 10, CANVAS_SIZE - 9);
+      ctx.fillText("Derived from shared 3D prescription", 10, canvasHeight - 9);
     }
-  }, [box, boxRenderMode, editable, hoveredHandle, image, showTarget, targetBox, viewId]);
+  }, [box, boxRenderMode, canvasWidth, canvasHeight, editable, hoveredHandle, image, showTarget, targetBox, viewId]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!editable || !canvasRef.current) {
@@ -113,8 +131,8 @@ export const LocalizerCanvas = ({
       event.clientX,
       event.clientY,
       canvasRef.current.getBoundingClientRect(),
-      CANVAS_SIZE,
-      CANVAS_SIZE
+      canvasWidth,
+      canvasHeight
     );
 
     const started = onBeginDrag(viewId, point, boxRenderMode);
@@ -123,6 +141,7 @@ export const LocalizerCanvas = ({
     }
 
     canvasRef.current.setPointerCapture(event.pointerId);
+    pointerIdRef.current = event.pointerId;
     setDragging(true);
 
     if (hoveredHandle?.kind === "move") {
@@ -139,8 +158,8 @@ export const LocalizerCanvas = ({
       event.clientX,
       event.clientY,
       canvasRef.current.getBoundingClientRect(),
-      CANVAS_SIZE,
-      CANVAS_SIZE
+      canvasWidth,
+      canvasHeight
     );
 
     if (dragging) {
@@ -164,6 +183,7 @@ export const LocalizerCanvas = ({
     if (canvasRef.current.hasPointerCapture(event.pointerId)) {
       canvasRef.current.releasePointerCapture(event.pointerId);
     }
+    pointerIdRef.current = null;
 
     if (dragging) {
       setDragging(false);
@@ -176,13 +196,13 @@ export const LocalizerCanvas = ({
   return (
     <canvas
       ref={canvasRef}
-      width={CANVAS_SIZE}
-      height={CANVAS_SIZE}
+      width={canvasWidth}
+      height={canvasHeight}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={releaseDrag}
       onPointerLeave={releaseDrag}
-      style={{ touchAction: "none" }}
+      style={{ touchAction: "none", display: "block", width: canvasWidth, height: canvasHeight }}
     />
   );
 };
@@ -213,11 +233,13 @@ const drawProjectedOutline = (
   ctx: CanvasRenderingContext2D,
   box: PlannerBox,
   viewId: ViewId,
-  style: OutlineStyle
+  style: OutlineStyle,
+  w: number,
+  h: number
 ) => {
   const geometry = getProjectedGeometry(box, viewId);
-  const projectedCorners = geometry.projected.map((point) => normToScreen(point, CANVAS_SIZE, CANVAS_SIZE));
-  const hull = geometry.hull.map((point) => normToScreen(point, CANVAS_SIZE, CANVAS_SIZE));
+  const projectedCorners = geometry.projected.map((point) => normToScreen(point, w, h));
+  const hull = geometry.hull.map((point) => normToScreen(point, w, h));
 
   if (projectedCorners.length < 8 || hull.length < 3) {
     return;
@@ -254,7 +276,7 @@ const drawProjectedOutline = (
   ctx.stroke();
 
   ctx.setLineDash([]);
-  const center = normToScreen(geometry.center2D, CANVAS_SIZE, CANVAS_SIZE);
+  const center = normToScreen(geometry.center2D, w, h);
   ctx.beginPath();
   ctx.arc(center.x, center.y, 5, 0, Math.PI * 2);
   ctx.fillStyle = style.color;
@@ -266,10 +288,12 @@ const drawFlatOutline = (
   ctx: CanvasRenderingContext2D,
   box: PlannerBox,
   viewId: ViewId,
-  style: OutlineStyle
+  style: OutlineStyle,
+  w: number,
+  h: number
 ) => {
   const geometry = getFlatGeometry(box, viewId);
-  const corners = geometry.projected.map((point) => normToScreen(point, CANVAS_SIZE, CANVAS_SIZE));
+  const corners = geometry.projected.map((point) => normToScreen(point, w, h));
 
   if (corners.length < 3) {
     return;
@@ -292,7 +316,7 @@ const drawFlatOutline = (
   ctx.stroke();
 
   ctx.setLineDash([]);
-  const center = normToScreen(geometry.center2D, CANVAS_SIZE, CANVAS_SIZE);
+  const center = normToScreen(geometry.center2D, w, h);
   ctx.beginPath();
   ctx.arc(center.x, center.y, 5, 0, Math.PI * 2);
   ctx.fillStyle = style.color;
@@ -305,13 +329,15 @@ const drawOutlineForMode = (
   box: PlannerBox,
   viewId: ViewId,
   mode: BoxRenderMode,
-  style: OutlineStyle
+  style: OutlineStyle,
+  w: number,
+  h: number
 ) => {
   if (mode === "flat2d") {
-    drawFlatOutline(ctx, box, viewId, style);
+    drawFlatOutline(ctx, box, viewId, style, w, h);
     return;
   }
-  drawProjectedOutline(ctx, box, viewId, style);
+  drawProjectedOutline(ctx, box, viewId, style, w, h);
 };
 
 const drawBackground = (
@@ -371,11 +397,13 @@ const drawHandles = (
   ctx: CanvasRenderingContext2D,
   box: PlannerBox,
   viewId: ViewId,
-  hoveredHandle: HandleId | null
+  hoveredHandle: HandleId | null,
+  w: number,
+  h: number
 ) => {
   const geometry = getFlatGeometry(box, viewId);
-  const corners = geometry.projected.map((p) => normToScreen(p, CANVAS_SIZE, CANVAS_SIZE));
-  const center2D = normToScreen(geometry.center2D, CANVAS_SIZE, CANVAS_SIZE);
+  const corners = geometry.projected.map((p) => normToScreen(p, w, h));
+  const center2D = normToScreen(geometry.center2D, w, h);
 
   ctx.save();
 

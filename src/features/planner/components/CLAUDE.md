@@ -7,6 +7,23 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5282 | 11:32 PM | 🔵 | LocalizerCanvas implements interactive 3D planning canvas with geometric projections | ~484 |
+| #5279 | " | 🔵 | PlannerShell implements complete MRI training workflow UI | ~481 |
 | #5181 | 4:51 PM | 🔵 | Current Implementation Features Advanced Calibration and Multi-Localizer Set Support | ~463 |
 | #5170 | 3:23 PM | 🔵 | Current Implementation Uses React Canvas Component with 3D Box Projection | ~502 |
+
+### Feb 23, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #5408 | 8:42 AM | 🟣 | Updated drawOutlineForMode to Thread Dimensions Through | ~313 |
+| #5407 | 8:40 AM | 🟣 | Added Dimension Parameters to drawFlatOutline Function | ~284 |
+| #5406 | 8:38 AM | 🟣 | Added Dimension Parameters to drawProjectedOutline Function | ~292 |
+| #5405 | 8:36 AM | 🟣 | Updated Pointer Move Coordinate Transformation | ~272 |
+| #5404 | 8:34 AM | 🟣 | Threaded Canvas Dimensions Through Draw Effect | ~327 |
+| #5403 | 8:32 AM | 🟣 | Added Optional Width and Height Props to LocalizerCanvas | ~333 |
+| #5371 | 1:34 AM | 🔵 | LocalizerCanvas Drawing and Cursor System | ~481 |
+| #5343 | 1:14 AM | 🔵 | PlannerShell Complete UI Features | ~526 |
+| #5339 | 1:10 AM | 🔵 | PlannerShell Main UI Component Structure | ~450 |
+| #5332 | 1:04 AM | 🔵 | LocalizerCanvas Interactive Canvas Component | ~409 |
 </claude-mem-context>

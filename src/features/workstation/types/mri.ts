@@ -1,6 +1,9 @@
 /** Body region for protocol grouping */
 export type RegionId = 'brain' | 'spine';
 
+/** Anatomical case (sub-region) used by the planner engine */
+export type CaseId = 'brain' | 'cspine' | 'tspine' | 'lspine';
+
 /** Anatomical view type */
 export type ViewType = 'sagittal' | 'coronal' | 'axial';
 

@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5278 | 11:32 PM | 🔵 | Comprehensive planner type system for MRI imaging protocols | ~421 |
 | #5114 | 2:59 PM | 🔵 | Med-Test Complete Protocol Planning System Architecture | ~820 |
 | #5103 | 2:56 PM | 🔵 | Med-Test Type System and Scoring Structure Revealed | ~456 |
 </claude-mem-context>

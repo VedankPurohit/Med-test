@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5287 | 11:34 PM | 🔵 | Planner configuration defines four anatomical cases with localizer image sets | ~353 |
 | #5114 | 2:59 PM | 🔵 | Med-Test Complete Protocol Planning System Architecture | ~820 |
 | #5112 | " | 🔵 | Med-Test Case Configuration and Localizer Image Sets | ~466 |
 </claude-mem-context>

@@ -7,5 +7,20 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5286 | 11:33 PM | 🔵 | Med-test uses minimal semantic CSS with basic clinical color scheme | ~344 |
+| #5277 | 11:31 PM | 🔵 | Current Med-test homepage renders PlannerShell component directly | ~259 |
+| #5275 | " | 🔵 | Med-test application identified as MRI Planning Trainer | ~255 |
 | #5180 | 4:50 PM | 🔵 | Application Entry Point Renders Single PlannerShell Component | ~253 |
+
+### Feb 23, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #5394 | 8:22 AM | 🟣 | Added Spine Sub-Region Routing to Homepage | ~381 |
+| #5382 | 8:16 AM | 🔵 | Main Page Routes to Workstation Based on Phase | ~291 |
+| #5360 | 1:30 AM | 🔵 | Merged CSS System with Workstation and Legacy Planner Styles | ~492 |
+| #5337 | 1:09 AM | 🔵 | Application Root Layout Configuration | ~187 |
+| #5336 | 1:08 AM | 🔵 | Main Application Route Structure | ~288 |
+| #5316 | 12:26 AM | 🔵 | Animation Systems Verified Identical Across Projects | ~399 |
+| #5315 | " | 🔵 | CSS Variable Discrepancies Found Between MedAssist and Med-test | ~316 |
 </claude-mem-context>

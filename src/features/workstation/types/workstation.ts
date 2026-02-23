@@ -3,6 +3,7 @@ import type { RegionId } from './mri';
 /** Phases of the workstation workflow */
 export type WorkstationPhase =
   | 'region-select'
+  | 'spine-subregion'
   | 'exam-setup'
   | 'protocols-confirmed'
   | 'survey-running'

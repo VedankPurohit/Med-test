@@ -1,4 +1,6 @@
 import type { ExamCardFolder } from '@/features/workstation/types/workstation';
+import type { CaseId } from '@/features/workstation/types/mri';
+import { filterPlannableExamCards } from './protocolRegistry';
 
 const EXAM_CARDS: ExamCardFolder[] = [
   {
@@ -48,4 +50,10 @@ const EXAM_CARDS: ExamCardFolder[] = [
 
 export function getExamCards(): ExamCardFolder[] {
   return EXAM_CARDS;
+}
+
+/** Returns ExamCard entries filtered to only those with planner definitions,
+ *  optionally further filtered by case (sub-region). */
+export function getPlannableExamCards(caseId?: CaseId | null): ExamCardFolder[] {
+  return filterPlannableExamCards(EXAM_CARDS, caseId);
 }
