@@ -167,7 +167,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
       </div>
 
       {/* Score display */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1.5">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2">
         {submitError && (
           <div className="mb-2 text-[8px]" style={{ color: "var(--fb-bad)" }}>
             {submitError}
@@ -183,33 +183,40 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
         {lastScore ? (
           <>
             {/* Pass/fail badge */}
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="mb-2.5">
               <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ background: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)' }}
-              />
-              <span
-                className="text-[11px] font-semibold"
-                style={{ color: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)' }}
+                className="score-pill"
+                style={{
+                  background: lastScore.pass ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.1)',
+                  color: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)',
+                }}
               >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)' }}
+                />
                 {lastScore.pass ? 'PASS' : 'NOT YET'} — {lastScore.finalScorePercent}%
               </span>
             </div>
 
             {/* Component scores */}
-            <div className="grid grid-cols-2 gap-1 mb-2">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mb-2.5">
               {[
                 { label: 'Position', value: lastScore.componentScores.positionPercent },
                 { label: 'Coverage', value: lastScore.componentScores.coveragePercent },
                 { label: 'Angulation', value: lastScore.componentScores.angulationPercent },
                 { label: 'Parameters', value: lastScore.componentScores.parametersPercent },
               ].map((item) => (
-                <div key={item.label}>
-                  <div className="text-[7px] uppercase" style={{ color: 'var(--text-muted)' }}>
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between px-1.5 py-0.5 rounded"
+                  style={{ background: 'var(--chrome-surface-hover)' }}
+                >
+                  <div className="text-[7px] uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                     {item.label}
                   </div>
                   <div
-                    className="text-[10px]"
+                    className="text-[10px] font-semibold tabular-nums"
                     style={{
                       color:
                         item.value >= 75
@@ -227,11 +234,11 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
 
             {/* Structured findings */}
             {findings.length > 0 && (
-              <div className="space-y-1.5 mb-2">
+              <div className="space-y-1.5 mb-2.5">
                 {findings.map((f, i) => (
                   <div
                     key={`${i}-${f.code}`}
-                    className="text-[9px] leading-snug rounded px-1.5 py-1"
+                    className="text-[9px] leading-snug rounded px-2 py-1.5"
                     style={{
                       background:
                         f.severity === 'error'
@@ -276,11 +283,11 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
             </div>
 
             {/* Accept / Run Scan / Show Correct Planning buttons */}
-            <div className="flex gap-1 mt-2 flex-wrap">
+            <div className="flex gap-1.5 mt-2.5 flex-wrap">
               {canAccept && (
                 <button
                   onClick={handleAccept}
-                  className="px-2 py-0.5 rounded text-[8px] cursor-pointer"
+                  className="btn-sm"
                   style={{
                     background: 'rgba(63,185,80,0.15)',
                     color: 'var(--fb-good)',
@@ -293,7 +300,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
               {canRunScan && (
                 <button
                   onClick={handleRunScan}
-                  className="px-2 py-0.5 rounded text-[8px] cursor-pointer"
+                  className="btn-sm"
                   style={{
                     background: 'rgba(37,99,235,0.15)',
                     color: 'var(--accent-blue)',
@@ -304,7 +311,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
                 </button>
               )}
               {scanning && (
-                <span className="text-[8px] animate-pulse-soft" style={{ color: 'var(--accent-blue)' }}>
+                <span className="text-[8px] animate-pulse-soft flex items-center" style={{ color: 'var(--accent-blue)' }}>
                   Scanning...
                 </span>
               )}
@@ -312,7 +319,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
                 <>
                   <button
                     onClick={handleShowCorrectPlanning}
-                    className="px-2 py-0.5 rounded text-[8px] cursor-pointer"
+                    className="btn-sm"
                     style={{
                       background: 'rgba(210,153,34,0.12)',
                       color: 'var(--fb-warn)',
@@ -323,12 +330,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
                   </button>
                   <button
                     onClick={planner.resetPlan}
-                    className="px-2 py-0.5 rounded text-[8px] cursor-pointer"
-                    style={{
-                      background: 'transparent',
-                      color: 'var(--text-muted)',
-                      border: '1px solid var(--chrome-border)',
-                    }}
+                    className="btn-sm btn-ghost"
                   >
                     Try Again
                   </button>
