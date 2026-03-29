@@ -365,8 +365,6 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
     },
 
     quickStartBrain: () => {
-      set({ phase: 'exam-setup', regionId: 'brain', caseId: 'brain', ...getCleanExamState('brain') });
-
       const brainProtocols = [
         { id: 'sagittal-t1-tse', label: 'Sag T1 TSE', shortName: 'Sag T1', orientation: 'SAG', region: 'brain' as const, estimatedTime: '2:45' },
         { id: 'axial-t2-tse', label: 'Ax T2 TSE', shortName: 'Ax T2', orientation: 'TRA', region: 'brain' as const, estimatedTime: '2:30' },
@@ -374,7 +372,11 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
         { id: 'axial-dwi', label: 'Ax DWI', shortName: 'Ax DWI', orientation: 'TRA', region: 'brain' as const, estimatedTime: '1:30' },
       ];
 
+      // Single set() call to avoid race conditions with HMR
       set({
+        ...getCleanExamState('brain'),
+        regionId: 'brain',
+        caseId: 'brain',
         addedProtocols: brainProtocols.map((p) => ({
           protocolId: p.id,
           label: p.label,

@@ -12,3 +12,4 @@ pnpm-debug.log*
 .env.production.local
 *.tsbuildinfo
 test-results/
+test-screenshots/
