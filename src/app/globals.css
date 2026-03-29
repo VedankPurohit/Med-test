@@ -39,6 +39,11 @@
   --accent-blue-dim: rgba(37, 99, 235, 0.1);
   --accent-blue-strong: rgba(37, 99, 235, 0.2);
 
+  /* === View Identification (3D Slicer convention) === */
+  --view-axial: #EF4444;
+  --view-sagittal: #EAB308;
+  --view-coronal: #22C55E;
+
   /* === Orientation Axis Colors === */
   --axis-ap: #3fb950;
   --axis-rl: #f85149;

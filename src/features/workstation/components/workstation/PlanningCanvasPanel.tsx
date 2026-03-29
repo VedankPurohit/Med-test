@@ -28,6 +28,12 @@ const VIEW_LABELS: Record<ViewType, string> = {
   axial: 'AXIAL',
 };
 
+const VIEW_ACCENT_COLORS: Record<ViewType, string> = {
+  sagittal: 'var(--view-sagittal)',
+  coronal: 'var(--view-coronal)',
+  axial: 'var(--view-axial)',
+};
+
 const VIEW_TO_PLANE: Record<ViewType, SlicePlane> = {
   sagittal: 'sagittal',
   coronal: 'coronal',
@@ -132,12 +138,13 @@ export default function PlanningCanvasPanel({
       className="relative flex-1 flex flex-col overflow-hidden animate-fade-in"
       style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
     >
-      {/* View label header */}
+      {/* View label header with colored accent bar */}
       <div
         className="flex items-center gap-2 px-2 py-1 text-[9px] tracking-[0.15em] uppercase shrink-0"
         style={{
           background: 'var(--chrome-surface)',
           borderBottom: '1px solid var(--chrome-border)',
+          borderTop: `3px solid ${VIEW_ACCENT_COLORS[view]}`,
           color: 'var(--text-secondary)',
         }}
       >
