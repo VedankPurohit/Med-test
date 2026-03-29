@@ -42,7 +42,7 @@ function RegionCard({
           className="text-[20px] font-bold"
           style={{ color: 'var(--accent-blue)' }}
         >
-          {region.id === 'brain' ? 'B' : 'S'}
+          {region.id === 'brain' ? 'B' : region.id === 'spine' ? 'S' : 'K'}
         </span>
       </div>
 

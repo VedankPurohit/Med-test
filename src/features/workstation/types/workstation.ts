@@ -11,7 +11,7 @@ export type WorkstationPhase =
   | 'protocol-active';
 
 /** Status of a protocol in the sidebar list */
-export type ProtocolStatus = 'pending' | 'active' | 'completed' | 'skipped';
+export type ProtocolStatus = 'pending' | 'active' | 'completed' | 'skipped' | 'planning' | 'scanning' | 'error';
 
 /** A protocol added to the exam's sidebar list */
 export interface ProtocolListItem {
@@ -21,10 +21,11 @@ export interface ProtocolListItem {
   orientation: string;
   region: RegionId;
   status: ProtocolStatus;
+  estimatedTime?: string;
 }
 
 /** Tab in the bottom-right panel */
-export type RightPanelTab = 'realtime' | 'feedback';
+export type RightPanelTab = 'realtime' | 'feedback' | 'notes';
 
 /** A folder in the ExamCards browser */
 export interface ExamCardFolder {

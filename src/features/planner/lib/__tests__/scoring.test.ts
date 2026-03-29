@@ -122,6 +122,34 @@ describe("scoring core", () => {
     expect(merged.target.rotation.rz).toBe(protocol.target.rotation.rz);
   });
 
+  it("returns planning_ready finding when score is perfect", () => {
+    const box: PlannerBox = {
+      center: deepClone(protocol.target.center),
+      size: deepClone(protocol.target.size),
+      rotation: deepClone(protocol.target.rotation)
+    };
+
+    const score = computeScore(protocol, box, deepClone(protocol.target.params), false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings![0]?.code).toBe("planning_ready");
+    expect(score.findings![0]?.severity).toBe("info");
+  });
+
+  it("returns error findings when score is bad", () => {
+    const badBox: PlannerBox = {
+      center: { x: 0.95, y: -0.95, z: 0.95 },
+      size: { x: 0.2, y: 1.6, z: 1.6 },
+      rotation: { rx: 40, ry: -40, rz: 40 }
+    };
+    const badParams = params(600, 20, 400, 3, 10, 4);
+
+    const score = computeScore(protocol, badBox, badParams, false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings!.length).toBeGreaterThan(0);
+    expect(score.findings!.some((f) => f.code === "position_off")).toBe(true);
+    expect(score.findings!.some((f) => f.severity === "error")).toBe(true);
+  });
+
   it("deep clones nested objects", () => {
     const cloned = deepClone(protocol.target);
     cloned.center.x = 999;

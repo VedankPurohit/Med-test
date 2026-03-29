@@ -1,5 +1,5 @@
 export type ViewId = "axial" | "sagittal" | "coronal";
-export type CaseId = "brain" | "cspine" | "tspine" | "lspine";
+export type CaseId = "brain" | "cspine" | "tspine" | "lspine" | "knee";
 export type BoxRenderMode = "flat2d" | "cube3d";
 
 export const STANDARD_PARAMETER_KEYS = [
@@ -10,6 +10,36 @@ export const STANDARD_PARAMETER_KEYS = [
   "SliceThickness",
   "SliceGap"
 ] as const;
+
+export const EXTENDED_PARAMETER_KEYS = [
+  ...STANDARD_PARAMETER_KEYS,
+  "FlipAngle",
+  "MatrixFreq",
+  "MatrixPhase",
+  "NEX",
+  "Bandwidth",
+  "ETL",
+  "PhaseEncDir",
+  "FatSuppression",
+  "ScanTime"
+] as const;
+
+export type ExtendedParameterKey = (typeof EXTENDED_PARAMETER_KEYS)[number];
+
+export type PhaseEncDirection = "AP" | "PA" | "RL" | "LR" | "SI" | "IS";
+export const PHASE_ENC_DIRECTIONS: PhaseEncDirection[] = ["AP", "PA", "RL", "LR", "SI", "IS"];
+
+export type FatSuppressionMode = "None" | "CHESS" | "STIR" | "SPAIR" | "Dixon";
+export const FAT_SUPPRESSION_MODES: FatSuppressionMode[] = ["None", "CHESS", "STIR", "SPAIR", "Dixon"];
+
+export type SequenceStatusId =
+  | "not_planned"
+  | "planning_started"
+  | "planning_accepted"
+  | "scan_running"
+  | "completed"
+  | "error"
+  | "warning";
 
 export type StandardParameterKey = (typeof STANDARD_PARAMETER_KEYS)[number];
 export type ParameterKey = StandardParameterKey | (string & {});
@@ -86,6 +116,28 @@ export type ProtocolInteractionRules = {
   rotationBounds?: { min: number; max: number };
 };
 
+export type ProtocolTeachingHighlight = {
+  key: string;
+  explanation: string;
+};
+
+export type ProtocolTeachingContent = {
+  purpose: string;
+  planningHint: string;
+  planningChecklist: string[];
+  parameterHighlights: ProtocolTeachingHighlight[];
+  correctOrderHint: number;
+};
+
+export type ScoreFinding = {
+  code: string;
+  severity: "error" | "warning" | "info";
+  title: string;
+  message: string;
+  suggestion?: string;
+  relatedParameter?: string;
+};
+
 export type ProtocolConfig = {
   id: string;
   label: string;
@@ -97,6 +149,8 @@ export type ProtocolConfig = {
   scoringProfile?: ProtocolScoringProfile;
   interactionRules?: ProtocolInteractionRules;
   clinicalNotes?: string[];
+  teaching?: ProtocolTeachingContent;
+  workflowOrder?: number;
 };
 
 export type LocalizerSet = {
@@ -110,6 +164,7 @@ export type CaseConfig = {
   label: string;
   protocols: ProtocolConfig[];
   localizerSets: LocalizerSet[];
+  volumeUrl?: string;
 };
 
 export type PlannerScore = {
@@ -123,6 +178,7 @@ export type PlannerScore = {
   finalScorePercent: number;
   pass: boolean;
   feedback: string[];
+  findings?: ScoreFinding[];
   componentScores: {
     positionPercent: number;
     coveragePercent: number;

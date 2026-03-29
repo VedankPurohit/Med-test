@@ -2,6 +2,7 @@ import { BRAIN_PROTOCOLS } from "@/features/planner/data/protocols/brain";
 import { CSPINE_PROTOCOLS } from "@/features/planner/data/protocols/cspine";
 import { TSPINE_PROTOCOLS } from "@/features/planner/data/protocols/tspine";
 import { LSPINE_PROTOCOLS } from "@/features/planner/data/protocols/lspine";
+import { KNEE_PROTOCOLS } from "@/features/planner/data/protocols/knee";
 import { validateProtocolConfig } from "@/features/planner/lib/validation";
 import { CaseConfig, CaseId, ViewId } from "@/features/planner/types/planner";
 
@@ -32,7 +33,8 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("brain", "clinical-low")
       }
     ],
-    protocols: BRAIN_PROTOCOLS
+    protocols: BRAIN_PROTOCOLS,
+    volumeUrl: "/volumes/brain/mni152_t1_1mm.nii.gz"
   },
   {
     id: "cspine",
@@ -69,6 +71,18 @@ export const CASES: CaseConfig[] = [
       }
     ],
     protocols: LSPINE_PROTOCOLS
+  },
+  {
+    id: "knee",
+    label: "Knee",
+    localizerSets: [
+      {
+        id: "default",
+        label: "Knee Default",
+        views: localizerViews("knee", "default")
+      }
+    ],
+    protocols: KNEE_PROTOCOLS
   }
 ];
 

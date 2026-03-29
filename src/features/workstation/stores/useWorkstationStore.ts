@@ -11,6 +11,7 @@ import type { ExamSubmissionSummary, ProtocolSummaryEntry } from '@/features/wor
 const REGION_DEFAULT_FOLDER: Record<RegionId, string[]> = {
   brain: [],
   spine: [],
+  extremity: [],
 };
 
 const SUBMISSION_SUMMARY_STORAGE_KEY = 'mriTrainerSubmissionSummaryV1';
@@ -169,6 +170,7 @@ interface WorkstationActions {
   setSubmissionSummary: (summary: ExamSubmissionSummary) => void;
   clearSubmissionSummary: () => void;
   resetExam: () => void;
+  reorderProtocols: (orderedIds: string[]) => void;
 }
 
 export const useWorkstationStore = create<WorkstationState & WorkstationActions>(
@@ -181,6 +183,8 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
     selectRegion: (regionId) => {
       if (regionId === 'spine') {
         set({ phase: 'spine-subregion', regionId: 'spine', caseId: null, ...getCleanExamState('spine') });
+      } else if (regionId === 'extremity') {
+        set({ phase: 'exam-setup', regionId, caseId: 'knee', ...getCleanExamState(regionId) });
       } else {
         set({ phase: 'exam-setup', regionId, caseId: 'brain', ...getCleanExamState(regionId) });
       }
@@ -207,6 +211,7 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
             orientation: protocol.orientation,
             region: protocol.region,
             status: 'pending',
+            estimatedTime: protocol.estimatedTime,
           },
         ],
       });
@@ -341,6 +346,21 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
     resetExam: () => {
       const { regionId } = get();
       set({ phase: 'exam-setup', ...getCleanExamState(regionId) });
+    },
+
+    reorderProtocols: (orderedIds) => {
+      const { addedProtocols } = get();
+      const idToProtocol = new Map(addedProtocols.map((p) => [p.protocolId, p]));
+      const reordered = orderedIds
+        .map((id) => idToProtocol.get(id))
+        .filter((p): p is ProtocolListItem => p !== undefined);
+      // Append any protocols not in the ordered list (safety net)
+      for (const p of addedProtocols) {
+        if (!orderedIds.includes(p.protocolId)) {
+          reordered.push(p);
+        }
+      }
+      set({ addedProtocols: reordered });
     },
   }),
 );

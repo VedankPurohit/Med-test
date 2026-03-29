@@ -2,14 +2,34 @@
 
 import { useEffect, useState } from 'react';
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
+import { useGuidanceStore } from '@/features/guidance/stores/useGuidanceStore';
 import { MOCK_PATIENT } from '@/features/workstation/lib/mockData';
 import type { CaseId } from '@/features/workstation/types/mri';
+
+function TipsToggle() {
+  const tipsEnabled = useGuidanceStore((s) => s.tipsEnabled);
+  const toggleTips = useGuidanceStore((s) => s.toggleTips);
+  return (
+    <button
+      onClick={toggleTips}
+      className="px-2 py-0.5 rounded text-[9px] cursor-pointer transition-colors mr-2"
+      style={{
+        background: tipsEnabled ? 'rgba(37,99,235,0.12)' : 'transparent',
+        color: tipsEnabled ? 'var(--accent-blue)' : 'var(--text-muted)',
+        border: tipsEnabled ? '1px solid rgba(37,99,235,0.3)' : '1px solid var(--chrome-border)',
+      }}
+    >
+      {tipsEnabled ? 'Tips ON' : 'Tips OFF'}
+    </button>
+  );
+}
 
 const CASE_LABELS: Record<CaseId, string> = {
   brain: 'Brain MRI',
   cspine: 'Cervical Spine MRI',
   tspine: 'Thoracic Spine MRI',
   lspine: 'Lumbar Spine MRI',
+  knee: 'Knee',
 };
 
 function formatTime(ms: number): string {
@@ -100,6 +120,8 @@ export default function WorkstationTopBar() {
       </span>
 
       <div className="flex-1" />
+
+      <TipsToggle />
 
       <div className="flex items-center gap-2">
         <button

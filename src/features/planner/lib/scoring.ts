@@ -6,7 +6,8 @@ import {
   ProtocolComponentWeights,
   ProtocolConfig,
   ProtocolPassGates,
-  ProtocolTarget
+  ProtocolTarget,
+  ScoreFinding
 } from "@/features/planner/types/planner";
 import { angleDiff, clamp } from "@/features/planner/lib/geometry";
 
@@ -188,6 +189,135 @@ const buildFeedback = (score: SingleTargetScore): string[] => {
     .map((entry) => entry.text);
 };
 
+const positionDirectionHint = (
+  score: SingleTargetScore,
+  box: { center: { x: number; y: number; z: number } }
+): string => {
+  const dx = score.target.center.x - box.center.x;
+  const dy = score.target.center.y - box.center.y;
+  const dz = score.target.center.z - box.center.z;
+  const parts: string[] = [];
+  // Scale from normalised coordinates to mm (FOV ≈ 250mm)
+  const scale = 250;
+  if (Math.abs(dx) > 0.01) {
+    parts.push(`${Math.round(Math.abs(dx) * scale)}mm ${dx > 0 ? "right" : "left"}`);
+  }
+  if (Math.abs(dy) > 0.01) {
+    parts.push(`${Math.round(Math.abs(dy) * scale)}mm ${dy > 0 ? "anterior" : "posterior"}`);
+  }
+  if (Math.abs(dz) > 0.01) {
+    parts.push(`${Math.round(Math.abs(dz) * scale)}mm ${dz > 0 ? "superior" : "inferior"}`);
+  }
+  return parts.length > 0 ? `Move box ${parts.join(", ")}.` : "Move the planning box closer to the anatomical center.";
+};
+
+const coverageHint = (score: SingleTargetScore): string => {
+  const tx = Math.round(score.target.size.x * 250);
+  const ty = Math.round(score.target.size.y * 250);
+  const tz = Math.round(score.target.size.z * 250);
+  return `Increase FOV to ${tx}\u00D7${ty}\u00D7${tz}mm.`;
+};
+
+const angulationHint = (
+  score: SingleTargetScore,
+  box: { rotation: { rx: number; ry: number; rz: number } }
+): string => {
+  const drx = angleDiff(box.rotation.rx, score.target.rotation.rx);
+  const dry = angleDiff(box.rotation.ry, score.target.rotation.ry);
+  const drz = angleDiff(box.rotation.rz, score.target.rotation.rz);
+  // Use signed difference for direction
+  const sRx = score.target.rotation.rx - box.rotation.rx;
+  const sRy = score.target.rotation.ry - box.rotation.ry;
+  const sRz = score.target.rotation.rz - box.rotation.rz;
+  const parts: string[] = [];
+  if (drx > 1) {
+    const dir = sRx > 0 ? "anteriorly" : "posteriorly";
+    parts.push(`${Math.round(drx)}\u00B0 ${dir} (Rx)`);
+  }
+  if (dry > 1) {
+    const dir = sRy > 0 ? "rightward" : "leftward";
+    parts.push(`${Math.round(dry)}\u00B0 ${dir} (Ry)`);
+  }
+  if (drz > 1) {
+    const dir = sRz > 0 ? "clockwise" : "counter-clockwise";
+    parts.push(`${Math.round(drz)}\u00B0 ${dir} (Rz)`);
+  }
+  return parts.length > 0 ? `Rotate slices ${parts.join(", ")}.` : "Rotate slices to align with the anatomical landmark.";
+};
+
+const buildFindings = (
+  protocol: ProtocolConfig,
+  score: SingleTargetScore,
+  pass: boolean,
+  box?: PlannerBox
+): ScoreFinding[] => {
+  const findings: ScoreFinding[] = [];
+  const hint = protocol.teaching?.planningHint;
+
+  if (score.componentScores.position < 0.8) {
+    const suggestion = box
+      ? (hint ?? positionDirectionHint(score, box))
+      : (hint ?? "Move the planning box closer to the anatomical center.");
+    findings.push({
+      code: "position_off",
+      severity: "error",
+      title: "Wrong Position",
+      message: "Slices are not centered on target anatomy.",
+      suggestion
+    });
+  }
+
+  if (score.componentScores.coverage < 0.8) {
+    findings.push({
+      code: "fov_too_small",
+      severity: "error",
+      title: "FOV Too Small",
+      message: "Anatomy is not fully covered by the planning volume.",
+      suggestion: coverageHint(score)
+    });
+  }
+
+  if (score.componentScores.angulation < 0.8) {
+    findings.push({
+      code: "angle_wrong",
+      severity: "error",
+      title: "Slice Angle Wrong",
+      message: "Slices are not aligned to the expected anatomical plane.",
+      suggestion: box ? angulationHint(score, box) : "Rotate slices to align with the anatomical landmark."
+    });
+  }
+
+  const paramEntries = Object.entries(score.rawErrors.perParamRelative)
+    .filter(([, err]) => err > 0.12)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2);
+
+  for (const [key, err] of paramEntries) {
+    const highlight = protocol.teaching?.parameterHighlights?.find((h) => h.key === key);
+    findings.push({
+      code: `param_mismatch_${key.toLowerCase()}`,
+      severity: "warning",
+      title: `Parameter ${key} Off`,
+      message: `${key} is ${Math.round(err * 100)}% away from target value.`,
+      suggestion: highlight?.explanation,
+      relatedParameter: key
+    });
+  }
+
+  if (findings.length === 0) {
+    findings.push({
+      code: "planning_ready",
+      severity: "info",
+      title: "Planning Acceptable",
+      message: pass
+        ? "Planning meets all requirements."
+        : "Planning is close but does not pass all gates."
+    });
+  }
+
+  return findings.slice(0, 4);
+};
+
 export const computeScore = (
   protocol: ProtocolConfig,
   box: PlannerBox,
@@ -214,6 +344,8 @@ export const computeScore = (
     best.componentScores.coverage >= gates.coverageMin &&
     best.componentScores.angulation >= gates.angulationMin;
 
+  const findings = buildFindings(protocol, best, pass, box);
+
   return {
     scoreSchemaVersion: 2,
     timestamp: new Date().toISOString(),
@@ -225,6 +357,7 @@ export const computeScore = (
     finalScorePercent: finalPct,
     pass,
     feedback: buildFeedback(best),
+    findings,
     componentScores: {
       positionPercent: Math.round(best.componentScores.position * 100),
       coveragePercent: Math.round(best.componentScores.coverage * 100),

@@ -21,9 +21,17 @@ const SPINE_REGION: RegionConfig = {
     'Cervical spine MRI with 5 sequences including sagittal T2, T1, STIR, and axial T2/T1.',
 };
 
+const EXTREMITY_REGION: RegionConfig = {
+  id: 'extremity',
+  displayName: 'Extremity',
+  description:
+    'Knee MRI with 5 sequences including sagittal PD, T2 FS, coronal PD, axial PD, and coronal T1.',
+};
+
 const REGION_MAP: ReadonlyMap<RegionId, RegionConfig> = new Map([
   [BRAIN_REGION.id, BRAIN_REGION],
   [SPINE_REGION.id, SPINE_REGION],
+  [EXTREMITY_REGION.id, EXTREMITY_REGION],
 ]);
 
 export function getRegion(id: RegionId): RegionConfig {

@@ -2,14 +2,7 @@
 
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import { MOCK_PATIENT, MOCK_EXAM } from '@/features/workstation/lib/mockData';
-import type { ProtocolStatus } from '@/features/workstation/types/workstation';
-
-const STATUS_COLORS: Record<ProtocolStatus, string> = {
-  pending: 'var(--text-muted)',
-  active: 'var(--plan-orange)',
-  completed: 'var(--fb-good)',
-  skipped: 'var(--fb-neutral)',
-};
+import { StatusIcon } from '@/features/guidance/components/StatusIcon';
 
 export default function ProtocolSidebar() {
   const phase = useWorkstationStore((s) => s.phase);
@@ -77,15 +70,7 @@ export default function ProtocolSidebar() {
                   if (!isActive) e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{
-                    background: STATUS_COLORS[protocol.status],
-                    boxShadow: protocol.status === 'active'
-                      ? '0 0 6px var(--plan-orange)'
-                      : 'none',
-                  }}
-                />
+                <StatusIcon status={protocol.status} size={8} />
 
                 <div className="flex-1 min-w-0">
                   <div
@@ -97,6 +82,14 @@ export default function ProtocolSidebar() {
                   >
                     {protocol.shortName}
                   </div>
+                  {protocol.estimatedTime && (
+                    <div
+                      className="text-[8px] truncate"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      {protocol.estimatedTime}
+                    </div>
+                  )}
                 </div>
 
                 <span

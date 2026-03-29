@@ -24,6 +24,14 @@ const EXAMCARD_TO_PLANNER: Record<string, { caseId: CaseId; plannerProtocolId: s
   // Neck (cervical)
   'neck-sag-t2':           { caseId: 'cspine', plannerProtocolId: 'cspine_sag_t2' },
   'neck-ax-t2':            { caseId: 'cspine', plannerProtocolId: 'cspine_ax_t2' },
+  'neck-cor-stir':         { caseId: 'cspine', plannerProtocolId: 'cspine_cor_stir' },
+  'neck-ax-t1-post':       { caseId: 'cspine', plannerProtocolId: 'cspine_ax_t1_post' },
+  // Knee
+  'knee-sag-pd':           { caseId: 'knee', plannerProtocolId: 'knee_sag_pd' },
+  'knee-sag-t2-fs':        { caseId: 'knee', plannerProtocolId: 'knee_sag_t2_fs' },
+  'knee-cor-pd':           { caseId: 'knee', plannerProtocolId: 'knee_cor_pd' },
+  'knee-ax-pd':            { caseId: 'knee', plannerProtocolId: 'knee_ax_pd' },
+  'knee-cor-t1':           { caseId: 'knee', plannerProtocolId: 'knee_cor_t1' },
 };
 
 export type ResolvedProtocol = {

@@ -45,6 +45,18 @@ const EXAM_CARDS: ExamCardFolder[] = [
       { id: 'neck-ax-t2', label: 'Ax T2 TSE (Neck)', shortName: 'Ax T2', orientation: 'TRA', region: 'spine', estimatedTime: '2:30' },
       { id: 'neck-cor-stir', label: 'Cor STIR (Neck)', shortName: 'Cor STIR', orientation: 'COR', region: 'spine', estimatedTime: '3:15' },
       { id: 'neck-sag-t2', label: 'Sag T2 TSE (Neck)', shortName: 'Sag T2', orientation: 'SAG', region: 'spine', estimatedTime: '2:50' },
+      { id: 'neck-ax-t1-post', label: 'Ax T1 Post (Neck)', shortName: 'Ax T1+C', orientation: 'TRA', region: 'spine', estimatedTime: '2:40' },
+    ],
+  },
+  {
+    id: 'knee',
+    label: 'KNEE',
+    children: [
+      { id: 'knee-sag-pd', label: 'Sag PD (Knee)', shortName: 'Sag PD', orientation: 'SAG', region: 'extremity', estimatedTime: '3:00' },
+      { id: 'knee-sag-t2-fs', label: 'Sag T2 FS (Knee)', shortName: 'Sag T2 FS', orientation: 'SAG', region: 'extremity', estimatedTime: '3:30' },
+      { id: 'knee-cor-pd', label: 'Cor PD (Knee)', shortName: 'Cor PD', orientation: 'COR', region: 'extremity', estimatedTime: '3:00' },
+      { id: 'knee-ax-pd', label: 'Ax PD (Knee)', shortName: 'Ax PD', orientation: 'TRA', region: 'extremity', estimatedTime: '2:45' },
+      { id: 'knee-cor-t1', label: 'Cor T1 (Knee)', shortName: 'Cor T1', orientation: 'COR', region: 'extremity', estimatedTime: '2:30' },
     ],
   },
 ];
