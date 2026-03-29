@@ -24,13 +24,10 @@ export default function ProtocolSidebar() {
       }}
     >
       <div
-        className="px-3 py-2 shrink-0"
+        className="px-3 py-2.5 shrink-0"
         style={{ borderBottom: '1px solid var(--chrome-border)' }}
       >
-        <div
-          className="text-[8px] uppercase tracking-[0.2em] mb-1"
-          style={{ color: 'var(--text-muted)' }}
-        >
+        <div className="panel-heading mb-1">
           Scan Protocols
         </div>
         <div className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
@@ -38,7 +35,7 @@ export default function ProtocolSidebar() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-1">
+      <div className="flex-1 overflow-y-auto py-1.5">
         {protocols.length === 0 ? (
           <div className="px-3 py-4 text-center">
             <div className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
@@ -93,10 +90,10 @@ export default function ProtocolSidebar() {
                 </div>
 
                 <span
-                  className="text-[7px] px-1 py-0.5 rounded uppercase tracking-wide shrink-0"
+                  className="text-[7px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0"
                   style={{
-                    background: 'var(--chrome-surface-raised)',
-                    color: 'var(--text-muted)',
+                    background: isActive ? 'var(--accent-blue-dim)' : 'var(--chrome-surface-raised)',
+                    color: isActive ? 'var(--accent-blue)' : 'var(--text-muted)',
                   }}
                 >
                   {protocol.orientation}
@@ -121,16 +118,13 @@ export default function ProtocolSidebar() {
       </div>
 
       <div
-        className="px-3 py-2 shrink-0"
+        className="px-3 py-2.5 shrink-0"
         style={{
           borderTop: '1px solid var(--chrome-border)',
           background: 'var(--chrome-surface)',
         }}
       >
-        <div
-          className="text-[8px] uppercase tracking-[0.2em] mb-1"
-          style={{ color: 'var(--text-muted)' }}
-        >
+        <div className="panel-heading mb-1">
           Patient
         </div>
         <div className="text-[10px] font-medium" style={{ color: 'var(--text-primary)' }}>

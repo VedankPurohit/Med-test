@@ -33,12 +33,12 @@ function SortableItem({ protocol }: { protocol: ProtocolListItem }) {
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition ?? undefined,
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '8px 10px',
-    marginBottom: '4px',
+    gap: '10px',
+    padding: '9px 12px',
+    marginBottom: '6px',
     borderRadius: '6px',
     background: 'var(--chrome-bg)',
     border: '1px solid var(--chrome-border)',
@@ -50,14 +50,15 @@ function SortableItem({ protocol }: { protocol: ProtocolListItem }) {
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <span
         style={{
-          color: 'var(--text-muted)',
-          fontSize: '14px',
+          color: 'var(--chrome-border-bright)',
+          fontSize: '12px',
           lineHeight: 1,
           flexShrink: 0,
+          letterSpacing: '1px',
         }}
         aria-hidden
       >
-        &#x2261;
+        &#x2807;
       </span>
 
       <span
@@ -65,6 +66,7 @@ function SortableItem({ protocol }: { protocol: ProtocolListItem }) {
           color: 'var(--text-primary)',
           fontSize: '11px',
           flex: 1,
+          fontWeight: 500,
         }}
       >
         {protocol.shortName}
@@ -74,11 +76,11 @@ function SortableItem({ protocol }: { protocol: ProtocolListItem }) {
         style={{
           fontSize: '8px',
           textTransform: 'uppercase',
-          padding: '2px 6px',
+          padding: '2px 8px',
           borderRadius: '9999px',
           background: 'rgba(100, 160, 255, 0.12)',
           color: 'var(--accent-blue)',
-          letterSpacing: '0.04em',
+          letterSpacing: '0.06em',
           flexShrink: 0,
         }}
       >
@@ -142,23 +144,17 @@ export default function SequenceOrderPanel({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Scrim */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'rgba(0, 0, 0, 0.45)' }}
-      />
+      <div className="modal-scrim" />
 
       {/* Dialog */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="sequence-order-title"
-        className="relative rounded-lg p-5 animate-scale-in"
+        className="modal-dialog p-5 animate-scale-in"
         style={{
           width: '100%',
           maxWidth: '400px',
-          background: 'var(--chrome-surface)',
-          border: '1px solid var(--chrome-border)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
         }}
       >
         {/* Title */}
@@ -201,10 +197,11 @@ export default function SequenceOrderPanel({
 
         {/* Validation message */}
         <div
-          className="text-[10px] mb-4"
+          className="text-[10px] mb-4 px-2 py-1.5 rounded"
           style={{
             minHeight: '18px',
             color: validation.valid ? 'var(--fb-good)' : 'var(--fb-bad)',
+            background: validation.valid ? 'rgba(63,185,80,0.08)' : 'rgba(248,81,73,0.06)',
           }}
         >
           {validation.valid && 'Order is correct'}
@@ -217,21 +214,15 @@ export default function SequenceOrderPanel({
           <button
             disabled={!validation.valid}
             onClick={onConfirm}
-            className="px-4 py-1.5 rounded text-[10px] font-semibold transition-colors cursor-pointer"
+            className="btn-sm btn-primary text-[10px] font-semibold"
             style={{
+              padding: '5px 16px',
               background: validation.valid
                 ? 'var(--accent-blue)'
                 : 'var(--chrome-border)',
-              border: '1px solid transparent',
               color: validation.valid ? '#ffffff' : 'var(--text-muted)',
               opacity: validation.valid ? 1 : 0.6,
               cursor: validation.valid ? 'pointer' : 'not-allowed',
-            }}
-            onMouseEnter={(e) => {
-              if (validation.valid) e.currentTarget.style.opacity = '0.9';
-            }}
-            onMouseLeave={(e) => {
-              if (validation.valid) e.currentTarget.style.opacity = '1';
             }}
           >
             Confirm Order

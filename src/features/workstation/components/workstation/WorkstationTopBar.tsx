@@ -12,7 +12,7 @@ function TipsToggle() {
   return (
     <button
       onClick={toggleTips}
-      className="px-2 py-0.5 rounded text-[9px] cursor-pointer transition-colors mr-2"
+      className="btn-sm text-[9px] mr-2"
       style={{
         background: tipsEnabled ? 'rgba(37,99,235,0.12)' : 'transparent',
         color: tipsEnabled ? 'var(--accent-blue)' : 'var(--text-muted)',
@@ -126,7 +126,7 @@ export default function WorkstationTopBar() {
       <div className="flex items-center gap-2">
         <button
           onClick={goBack}
-          className="px-2 py-1 rounded text-[9px] transition-colors cursor-pointer"
+          className="btn-sm text-[9px]"
           style={{
             background: 'transparent',
             border: '1px solid transparent',
@@ -149,7 +149,7 @@ export default function WorkstationTopBar() {
         {phase !== 'exam-setup' && (
           <button
             onClick={resetExam}
-            className="px-2 py-1 rounded text-[9px] transition-colors cursor-pointer"
+            className="btn-sm text-[9px]"
             style={{
               background: 'transparent',
               border: '1px solid transparent',
@@ -174,7 +174,7 @@ export default function WorkstationTopBar() {
           <button
             onClick={confirmProtocols}
             disabled={!canConfirm}
-            className="px-3 py-1 rounded text-[9px] transition-colors"
+            className="btn-sm text-[9px] font-medium"
             style={{
               background: canConfirm ? 'var(--accent-blue-dim)' : 'transparent',
               border: `1px solid ${canConfirm ? 'rgba(37, 99, 235, 0.3)' : 'var(--chrome-border)'}`,
@@ -191,7 +191,7 @@ export default function WorkstationTopBar() {
           <button
             onClick={startSurvey}
             disabled={!canSurvey || isSurveying}
-            className="px-3 py-1 rounded text-[9px] font-medium transition-colors"
+            className="btn-sm btn-primary text-[9px] font-medium"
             style={{
               background: canSurvey ? 'var(--accent-blue)' : 'var(--chrome-surface-raised)',
               border: `1px solid ${canSurvey ? 'var(--accent-blue)' : 'var(--chrome-border)'}`,

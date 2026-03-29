@@ -70,19 +70,15 @@ export function ParameterQuizPanel({
       }}
     >
       <div
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }}
+        className="modal-scrim"
         onClick={onSkip}
       />
 
       <div
-        className="animate-scale-in"
+        className="modal-dialog animate-scale-in"
         style={{
-          position: "relative",
-          background: "var(--chrome-surface)",
-          border: "1px solid var(--chrome-border)",
-          borderRadius: 8,
           padding: 20,
-          width: 360,
+          width: 380,
           maxHeight: "80vh",
           overflow: "auto",
         }}
@@ -91,18 +87,29 @@ export function ParameterQuizPanel({
           PARAMETER QUIZ — {protocol.label}
         </div>
         <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 16 }}>
-          {submitted
-            ? `Score: ${score}% (${results?.filter((r) => r.correct).length}/${results?.length})`
-            : "Enter the correct parameter values from memory."}
+          {submitted ? (
+            <span
+              className="score-pill"
+              style={{
+                background: allCorrect ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.1)',
+                color: allCorrect ? 'var(--fb-good)' : 'var(--fb-bad)',
+                fontSize: 9,
+              }}
+            >
+              Score: {score}% ({results?.filter((r) => r.correct).length}/{results?.length})
+            </span>
+          ) : (
+            "Enter the correct parameter values from memory."
+          )}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {quizParams.map((key) => {
             const s = spec(key);
             const result = results?.find((r) => r.key === key);
             return (
               <div key={key}>
-                <div style={{ fontSize: 9, color: "var(--text-secondary)", marginBottom: 2 }}>
+                <div style={{ fontSize: 9, color: "var(--text-secondary)", marginBottom: 4, fontWeight: 500 }}>
                   {s?.label ?? key}
                   {s?.unit ? ` (${s.unit})` : ""}
                 </div>
@@ -114,32 +121,34 @@ export function ParameterQuizPanel({
                   onChange={(e) =>
                     setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
                   }
+                  className="param-input"
                   style={{
                     width: "100%",
-                    padding: "4px 8px",
+                    padding: "6px 10px",
                     fontSize: 11,
                     fontFamily: "inherit",
                     background: "var(--input-bg)",
-                    border: `1px solid ${
+                    border: `1.5px solid ${
                       result
                         ? result.correct
                           ? "var(--fb-good)"
                           : "var(--fb-bad)"
                         : "var(--input-border)"
                     }`,
-                    borderRadius: 4,
+                    borderRadius: 5,
                     color: "var(--text-primary)",
                     outline: "none",
+                    transition: "border-color 0.15s ease",
                   }}
                 />
                 {result && !result.correct && (
-                  <div style={{ fontSize: 8, color: "var(--fb-bad)", marginTop: 2 }}>
+                  <div style={{ fontSize: 8, color: "var(--fb-bad)", marginTop: 4, fontWeight: 500 }}>
                     Correct: {result.target}
                     {s?.unit ? ` ${s.unit}` : ""}
                   </div>
                 )}
                 {result && result.correct && (
-                  <div style={{ fontSize: 8, color: "var(--fb-good)", marginTop: 2 }}>
+                  <div style={{ fontSize: 8, color: "var(--fb-good)", marginTop: 4, fontWeight: 500 }}>
                     Correct
                   </div>
                 )}
@@ -148,35 +157,26 @@ export function ParameterQuizPanel({
           })}
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 18, paddingTop: 14, justifyContent: "flex-end", borderTop: "1px solid var(--chrome-border-light)" }}>
           {!submitted ? (
             <>
               <button
                 onClick={onSkip}
+                className="btn-sm btn-ghost"
                 style={{
-                  padding: "4px 12px",
+                  padding: "5px 12px",
                   fontSize: 10,
-                  borderRadius: 4,
-                  background: "transparent",
-                  color: "var(--text-muted)",
-                  border: "1px solid var(--chrome-border)",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
                 }}
               >
                 Skip
               </button>
               <button
                 onClick={handleSubmit}
+                className="btn-sm btn-primary"
                 style={{
-                  padding: "4px 16px",
+                  padding: "5px 16px",
                   fontSize: 10,
-                  borderRadius: 4,
-                  background: "var(--accent-blue)",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
+                  fontWeight: 500,
                 }}
               >
                 Check Answers
@@ -184,16 +184,15 @@ export function ParameterQuizPanel({
             </>
           ) : (
             <button
-              onClick={allCorrect ? onComplete : onComplete}
+              onClick={onComplete}
+              className="btn-sm"
               style={{
-                padding: "4px 16px",
+                padding: "5px 16px",
                 fontSize: 10,
-                borderRadius: 4,
+                fontWeight: 500,
                 background: allCorrect ? "rgba(63,185,80,0.15)" : "var(--accent-blue)",
                 color: allCorrect ? "var(--fb-good)" : "#fff",
-                border: allCorrect ? "1px solid rgba(63,185,80,0.3)" : "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
+                border: allCorrect ? "1px solid rgba(63,185,80,0.3)" : "1px solid var(--accent-blue)",
               }}
             >
               {allCorrect ? "Perfect — Continue" : "Continue to Planning"}

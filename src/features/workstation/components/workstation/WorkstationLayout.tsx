@@ -92,10 +92,7 @@ function BlackPanel({ view }: { view: ViewType }) {
 function PatientInfoSection() {
   return (
     <div className="p-3" style={{ borderBottom: '1px solid var(--chrome-border)' }}>
-      <div
-        className="text-[8px] uppercase tracking-[0.2em] mb-2"
-        style={{ color: 'var(--text-muted)' }}
-      >
+      <div className="panel-heading mb-2">
         Patient Information
       </div>
       <div className="space-y-1.5">

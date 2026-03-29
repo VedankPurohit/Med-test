@@ -18,8 +18,7 @@ export function SequenceInfoPopup({ open, protocol, onNext, onSkip, onClose }: S
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0"
-        style={{ background: 'rgba(0, 0, 0, 0.3)' }}
+        className="modal-scrim"
         onClick={onClose}
       />
 
@@ -27,11 +26,8 @@ export function SequenceInfoPopup({ open, protocol, onNext, onSkip, onClose }: S
         role="dialog"
         aria-modal="true"
         aria-labelledby="sequence-info-title"
-        className="relative w-[480px] rounded-lg p-5 animate-scale-in"
+        className="modal-dialog w-[480px] p-5 animate-scale-in"
         style={{
-          background: 'var(--chrome-surface)',
-          border: '1px solid var(--chrome-border)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
           fontFamily: 'var(--font-mono, monospace)',
         }}
       >
@@ -46,17 +42,19 @@ export function SequenceInfoPopup({ open, protocol, onNext, onSkip, onClose }: S
           </span>
           <button
             onClick={onClose}
-            className="w-5 h-5 flex items-center justify-center rounded text-[11px] cursor-pointer transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded text-[12px] cursor-pointer transition-colors"
             style={{
-              background: 'transparent',
-              border: 'none',
+              background: 'var(--chrome-surface-hover)',
+              border: '1px solid var(--chrome-border)',
               color: 'var(--text-muted)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = 'var(--text-primary)';
+              e.currentTarget.style.background = 'var(--chrome-surface-raised)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.background = 'var(--chrome-surface-hover)';
             }}
             aria-label="Close"
           >
@@ -136,38 +134,18 @@ export function SequenceInfoPopup({ open, protocol, onNext, onSkip, onClose }: S
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-2 justify-end pt-2">
+        <div className="flex items-center gap-2 justify-end pt-3" style={{ borderTop: '1px solid var(--chrome-border-light)' }}>
           <button
             onClick={onSkip}
-            className="px-3 py-1.5 rounded text-[10px] transition-colors cursor-pointer"
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--chrome-border)',
-              color: 'var(--text-secondary)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--chrome-surface-hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
+            className="btn-sm btn-ghost text-[10px]"
+            style={{ padding: '5px 12px' }}
           >
             Skip — Start Planning
           </button>
           <button
             onClick={onNext}
-            className="px-3 py-1.5 rounded text-[10px] transition-colors cursor-pointer"
-            style={{
-              background: 'var(--accent-blue)',
-              border: '1px solid var(--accent-blue)',
-              color: '#ffffff',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '0.9';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '1';
-            }}
+            className="btn-sm btn-primary text-[10px] font-medium"
+            style={{ padding: '5px 14px' }}
           >
             Next — Learn Parameters
           </button>

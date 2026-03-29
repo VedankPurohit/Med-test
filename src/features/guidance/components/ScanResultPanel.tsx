@@ -68,23 +68,15 @@ export function ScanResultPanel({
     >
       {/* Scrim */}
       <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.6)",
-        }}
+        className="modal-scrim"
         onClick={onClose}
       />
 
       {/* Dialog */}
       <div
-        className="animate-scale-in"
+        className="modal-dialog animate-scale-in"
         style={{
-          position: "relative",
-          background: "var(--chrome-surface)",
-          border: "1px solid var(--chrome-border)",
-          borderRadius: 8,
-          padding: 16,
+          padding: 20,
           maxWidth: 600,
           maxHeight: "80vh",
           overflow: "auto",
@@ -117,7 +109,7 @@ export function ScanResultPanel({
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 4,
+              gap: 6,
             }}
           >
             {bitmaps.map((bmp, i) => (
@@ -132,27 +124,24 @@ export function ScanResultPanel({
               alignItems: "center",
               justifyContent: "center",
               background: "var(--panel-bg)",
-              borderRadius: 4,
+              borderRadius: 6,
               color: "var(--text-muted)",
               fontSize: 10,
+              border: "1px solid var(--chrome-border)",
             }}
           >
             No volume loaded
           </div>
         )}
 
-        <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
           <button
             onClick={onClose}
+            className="btn-sm btn-primary"
             style={{
-              padding: "4px 16px",
+              padding: "5px 16px",
               fontSize: 10,
-              borderRadius: 4,
-              background: "var(--accent-blue)",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "inherit",
+              fontWeight: 500,
             }}
           >
             Close
@@ -184,7 +173,7 @@ function SliceCanvas({ bitmap, index }: { bitmap: ImageBitmap; index: number }) 
         style={{
           width: "100%",
           height: "auto",
-          borderRadius: 2,
+          borderRadius: 4,
           background: "#000",
           display: "block",
         }}

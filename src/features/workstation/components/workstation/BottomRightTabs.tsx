@@ -21,8 +21,8 @@ export default function BottomRightTabs({ bridge }: { bridge?: PlannerBridge }) 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div
-        className="flex items-center h-6 shrink-0"
-        style={{ borderBottom: '1px solid var(--chrome-border)' }}
+        className="flex items-center h-7 shrink-0"
+        style={{ borderBottom: '1px solid var(--chrome-border)', background: 'var(--chrome-surface)' }}
       >
         {TABS.map((tab) => (
           <button
@@ -39,6 +39,7 @@ export default function BottomRightTabs({ bridge }: { bridge?: PlannerBridge }) 
                 activeTab === tab.id
                   ? 'var(--accent-blue-dim)'
                   : 'transparent',
+              fontWeight: activeTab === tab.id ? 500 : 400,
             }}
           >
             {tab.label}
