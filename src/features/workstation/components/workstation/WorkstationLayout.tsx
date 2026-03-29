@@ -15,6 +15,10 @@ import SurveyAnimation from './SurveyAnimation';
 import ConfirmationDialog from './ConfirmationDialog';
 import { MOCK_PATIENT } from '@/features/workstation/lib/mockData';
 import { ORIENTATION_LABELS } from '@/features/workstation/types/mri';
+import SequenceOrderPanel from '@/features/guidance/components/SequenceOrderPanel';
+import { GuidedPlanningOverlay } from '@/features/guidance/components/GuidedPlanningOverlay';
+import { GuidanceFlowOverlays } from '@/features/guidance/components/GuidanceFlowOverlays';
+import { useGuidanceStore } from '@/features/guidance/stores/useGuidanceStore';
 
 const VIEWS: ViewType[] = ['sagittal', 'coronal', 'axial'];
 const VIEW_LABELS: Record<ViewType, string> = {
@@ -133,6 +137,20 @@ function PatientInfoSection() {
             {MOCK_PATIENT.id}
           </div>
         </div>
+        <div>
+          <div className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Study Type</div>
+          <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+            {MOCK_PATIENT.studyType}
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <div>
+            <div className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Contrast</div>
+            <div className="text-[10px]" style={{ color: MOCK_PATIENT.contrastRequired ? 'var(--fb-warn)' : 'var(--text-secondary)' }}>
+              {MOCK_PATIENT.contrastRequired ? `Yes — ${MOCK_PATIENT.contrastAgent}` : 'No'}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -210,11 +228,15 @@ function CanvasToolbar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge>
 
 export default function WorkstationLayout() {
   const phase = useWorkstationStore((s) => s.phase);
+  const startSurvey = useWorkstationStore((s) => s.startSurvey);
   const bridge = usePlannerBridge();
+  const orderConfirmed = useGuidanceStore((s) => s.orderConfirmed);
+  const setOrderConfirmed = useGuidanceStore((s) => s.setOrderConfirmed);
 
   const showCanvasPanels = bridge.isActive;
   const showBlackPanels = (phase === 'survey-complete' || phase === 'protocol-active') && !showCanvasPanels;
   const showSurvey = phase === 'survey-running';
+  const showOrderPanel = phase === 'protocols-confirmed' && !orderConfirmed;
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden">
@@ -251,6 +273,7 @@ export default function WorkstationLayout() {
             )}
 
             {showSurvey && <SurveyAnimation />}
+            {showCanvasPanels && <GuidedPlanningOverlay />}
           </div>
 
           <ProtocolBrowser bridge={bridge} />
@@ -282,6 +305,14 @@ export default function WorkstationLayout() {
 
       <ScannerStatusBar />
       <ConfirmationDialog />
+      <SequenceOrderPanel
+        open={showOrderPanel}
+        onConfirm={() => {
+          setOrderConfirmed(true);
+          startSurvey();
+        }}
+      />
+      {showCanvasPanels && <GuidanceFlowOverlays bridge={bridge} />}
     </div>
   );
 }

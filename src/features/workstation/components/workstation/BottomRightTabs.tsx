@@ -3,12 +3,15 @@
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import RealTimePanel from './RealTimePanel';
 import FeedbackPanel from './FeedbackPanel';
+import NotesPanel from './NotesPanel';
+import { LiveFeedbackOverlay } from '@/features/guidance/components/LiveFeedbackOverlay';
 import type { RightPanelTab } from '@/features/workstation/types/workstation';
 import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
 
 const TABS: { id: RightPanelTab; label: string }[] = [
   { id: 'realtime', label: 'Real-Time' },
   { id: 'feedback', label: 'Feedback' },
+  { id: 'notes', label: 'Notes' },
 ];
 
 export default function BottomRightTabs({ bridge }: { bridge?: PlannerBridge }) {
@@ -44,8 +47,21 @@ export default function BottomRightTabs({ bridge }: { bridge?: PlannerBridge }) 
       </div>
 
       <div className="flex-1 min-h-0">
-        {activeTab === 'realtime' ? (
-          <RealTimePanel />
+        {activeTab === 'notes' ? (
+          <NotesPanel />
+        ) : activeTab === 'realtime' ? (
+          <div className="h-full flex flex-col">
+            <div className="flex-1 min-h-0">
+              <RealTimePanel />
+            </div>
+            {bridge?.isActive && (
+              <LiveFeedbackOverlay
+                box={bridge.planner.box}
+                target={bridge.planner.currentProtocol?.target ?? null}
+                tolerances={bridge.planner.currentProtocol?.tolerances ?? null}
+              />
+            )}
+          </div>
         ) : bridge?.isActive ? (
           <FeedbackPanel bridge={bridge} />
         ) : (
