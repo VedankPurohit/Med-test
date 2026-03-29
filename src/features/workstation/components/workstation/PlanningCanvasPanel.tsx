@@ -92,19 +92,28 @@ export default function PlanningCanvasPanel({
     DEFAULT_WINDOW_WIDTH
   );
 
-  // Scroll handler for slice navigation
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      if (!volume) return;
+  // Scroll handler for slice navigation — uses native event listener
+  // with { passive: false } to properly prevent page scroll
+  const sliceStateRef = useRef(sliceIndex);
+  sliceStateRef.current = sliceIndex;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !volume) return;
+
+    const handler = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 1 : -1;
-      setSliceIndex((prev) => ({
-        ...prev,
-        [plane]: Math.max(0, Math.min(prev[plane] + delta, maxSlices - 1)),
-      }));
-    },
-    [volume, plane, maxSlices]
-  );
+      const current = sliceStateRef.current[plane] ?? 0;
+      const next = Math.max(0, Math.min(current + delta, maxSlices - 1));
+      if (next !== current) {
+        setSliceIndex((prev) => ({ ...prev, [plane]: next }));
+      }
+    };
+
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [volume, plane, maxSlices]);
 
   // Determine image source: volume slice > uploaded image > localizer fallback
   const imageSrc: string | ImageBitmap =
@@ -170,7 +179,6 @@ export default function PlanningCanvasPanel({
       <div
         ref={containerRef}
         className="flex-1 relative min-h-0 flex items-center justify-center"
-        onWheel={handleWheel}
       >
         <LocalizerCanvas
           viewId={viewId}
