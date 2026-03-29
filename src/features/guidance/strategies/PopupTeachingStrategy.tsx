@@ -1,14 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { TeachingRenderProps } from '@/features/guidance/types/guidance';
 
 function PopupTeachingRender({ protocol, params, onParamChange, onAccept, onSkip }: TeachingRenderProps) {
   const highlights = protocol.teaching?.parameterHighlights ?? [];
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Auto-advance when no highlights — must be in useEffect, not during render
+  useEffect(() => {
+    if (highlights.length === 0) {
+      onAccept();
+    }
+  }, [highlights.length, onAccept]);
+
   if (highlights.length === 0) {
-    onAccept();
     return null;
   }
 
