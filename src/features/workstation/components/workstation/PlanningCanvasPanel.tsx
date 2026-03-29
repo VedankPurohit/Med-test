@@ -7,6 +7,11 @@ import type { ViewId } from '@/features/planner/types/planner';
 import type { ViewType } from '@/features/workstation/types/mri';
 import { ORIENTATION_LABELS } from '@/features/workstation/types/mri';
 import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
+import { useGuidanceStore } from '@/features/guidance/stores/useGuidanceStore';
+import { useVolume } from '@/features/volume/hooks/useVolume';
+import { useVolumeSlice } from '@/features/volume/hooks/useVolumeSlice';
+import { getSliceCount } from '@/features/volume/lib/sliceExtractor';
+import type { SlicePlane } from '@/features/volume/types/volume';
 
 const AXIS_COLORS: Record<string, string> = {
   A: 'var(--axis-ap)',
@@ -23,6 +28,16 @@ const VIEW_LABELS: Record<ViewType, string> = {
   axial: 'AXIAL',
 };
 
+const VIEW_TO_PLANE: Record<ViewType, SlicePlane> = {
+  sagittal: 'sagittal',
+  coronal: 'coronal',
+  axial: 'axial',
+};
+
+// Default window/level for T1 brain
+const DEFAULT_WINDOW_CENTER = 600;
+const DEFAULT_WINDOW_WIDTH = 1200;
+
 export default function PlanningCanvasPanel({
   view,
   bridge,
@@ -35,12 +50,61 @@ export default function PlanningCanvasPanel({
   const isEditable = VIEW_CONFIG[viewId].editable;
   const { planner } = bridge;
 
-  const showTarget = planner.showTarget || planner.showTargetAlways;
+  const guidanceShowTarget = useGuidanceStore((s) => s.showCorrectPlanning);
+  const showTarget = planner.showTarget || planner.showTargetAlways || guidanceShowTarget;
 
-  // Only show the planning box when a specific protocol is actively selected
   const hasActiveProtocol = bridge.resolved !== null && planner.currentProtocol !== null;
 
-  // Measure container to give the canvas dynamic dimensions
+  // Volume integration
+  const volumeUrl = bridge.resolved?.caseConfig.volumeUrl ?? null;
+  const { volume } = useVolume(volumeUrl);
+  const plane = VIEW_TO_PLANE[view];
+  const maxSlices = volume ? getSliceCount(volume, plane) : 0;
+  const [sliceIndex, setSliceIndex] = useState<Record<SlicePlane, number>>({
+    axial: 0,
+    sagittal: 0,
+    coronal: 0,
+  });
+
+  // Initialize slice index to middle when volume loads
+  useEffect(() => {
+    if (volume) {
+      setSliceIndex({
+        axial: Math.floor(getSliceCount(volume, 'axial') / 2),
+        sagittal: Math.floor(getSliceCount(volume, 'sagittal') / 2),
+        coronal: Math.floor(getSliceCount(volume, 'coronal') / 2),
+      });
+    }
+  }, [volume]);
+
+  const currentSliceIndex = sliceIndex[plane] ?? 0;
+  const volumeSliceBitmap = useVolumeSlice(
+    volume,
+    plane,
+    currentSliceIndex,
+    DEFAULT_WINDOW_CENTER,
+    DEFAULT_WINDOW_WIDTH
+  );
+
+  // Scroll handler for slice navigation
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (!volume) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 1 : -1;
+      setSliceIndex((prev) => ({
+        ...prev,
+        [plane]: Math.max(0, Math.min(prev[plane] + delta, maxSlices - 1)),
+      }));
+    },
+    [volume, plane, maxSlices]
+  );
+
+  // Determine image source: volume slice > uploaded image > localizer fallback
+  const imageSrc: string | ImageBitmap =
+    volumeSliceBitmap ?? planner.getImageSource(viewId);
+
+  // Measure container
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 320, height: 320 });
 
@@ -88,14 +152,23 @@ export default function PlanningCanvasPanel({
             DERIVED
           </span>
         )}
+        {volume && (
+          <span className="text-[7px]" style={{ color: 'var(--text-muted)' }}>
+            {currentSliceIndex + 1}/{maxSlices}
+          </span>
+        )}
       </div>
 
       {/* Canvas fills remaining space */}
-      <div ref={containerRef} className="flex-1 relative min-h-0 flex items-center justify-center">
+      <div
+        ref={containerRef}
+        className="flex-1 relative min-h-0 flex items-center justify-center"
+        onWheel={handleWheel}
+      >
         <LocalizerCanvas
           viewId={viewId}
           boxRenderMode={bridge.boxRenderMode}
-          imageSrc={planner.getImageSource(viewId)}
+          imageSrc={imageSrc}
           fallbackImageSrc={planner.localizerSet?.views[viewId] ?? ""}
           box={hasActiveProtocol ? planner.box : null}
           targetBox={hasActiveProtocol ? (planner.currentProtocol?.target ?? null) : null}

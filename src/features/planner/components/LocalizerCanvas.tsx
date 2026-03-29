@@ -9,7 +9,7 @@ import { BoxRenderMode, HandleId, PlannerBox, Point2, ViewId } from "@/features/
 type LocalizerCanvasProps = {
   viewId: ViewId;
   boxRenderMode: BoxRenderMode;
-  imageSrc: string;
+  imageSrc: string | ImageBitmap;
   fallbackImageSrc?: string;
   box: PlannerBox | null;
   targetBox: PlannerBox | null;
@@ -46,7 +46,7 @@ export const LocalizerCanvas = ({
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const pointerIdRef = useRef<number | null>(null);
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [image, setImage] = useState<HTMLImageElement | ImageBitmap | null>(null);
   const [dragging, setDragging] = useState(false);
   const [hoveredHandle, setHoveredHandle] = useState<HandleId | null>(null);
 
@@ -63,6 +63,12 @@ export const LocalizerCanvas = ({
 
   useEffect(() => {
     let mounted = true;
+
+    // If imageSrc is an ImageBitmap, use it directly
+    if (imageSrc instanceof ImageBitmap) {
+      setImage(imageSrc);
+      return;
+    }
 
     if (!imageSrc && !fallbackImageSrc) {
       setImage(null);
@@ -361,7 +367,7 @@ const drawOutlineForMode = (
 
 const drawBackground = (
   ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement | null,
+  image: HTMLImageElement | ImageBitmap | null,
   width: number,
   height: number
 ) => {
