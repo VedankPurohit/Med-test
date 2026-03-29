@@ -40,10 +40,6 @@ const VIEW_TO_PLANE: Record<ViewType, SlicePlane> = {
   axial: 'axial',
 };
 
-// Default window/level for T1 brain
-const DEFAULT_WINDOW_CENTER = 600;
-const DEFAULT_WINDOW_WIDTH = 1200;
-
 export default function PlanningCanvasPanel({
   view,
   bridge,
@@ -66,6 +62,10 @@ export default function PlanningCanvasPanel({
   const { volume } = useVolume(volumeUrl);
   const plane = VIEW_TO_PLANE[view];
   const maxSlices = volume ? getSliceCount(volume, plane) : 0;
+
+  // Auto window/level from volume data range
+  const windowCenter = volume ? (volume.dataMin + volume.dataMax) / 2 : 500;
+  const windowWidth = volume ? (volume.dataMax - volume.dataMin) * 0.85 : 1000;
   const [sliceIndex, setSliceIndex] = useState<Record<SlicePlane, number>>({
     axial: 0,
     sagittal: 0,
@@ -88,8 +88,8 @@ export default function PlanningCanvasPanel({
     volume,
     plane,
     currentSliceIndex,
-    DEFAULT_WINDOW_CENTER,
-    DEFAULT_WINDOW_WIDTH
+    windowCenter,
+    windowWidth
   );
 
   // Scroll handler for slice navigation — uses native event listener

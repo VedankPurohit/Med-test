@@ -24,7 +24,10 @@ export function ScanResultPanel({
 
   const sliceResults = useMemo(() => {
     if (!volume || !box) return [];
-    return simulateScanResult(volume, box, "axial", 600, 1200);
+    // Auto window from volume data range
+    const wc = (volume.dataMin + volume.dataMax) / 2;
+    const ww = (volume.dataMax - volume.dataMin) * 0.85;
+    return simulateScanResult(volume, box, "axial", wc, ww);
   }, [volume, box]);
 
   // Convert SliceResults to ImageBitmaps
