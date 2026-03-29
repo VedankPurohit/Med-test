@@ -153,13 +153,13 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
           onClick={() => void handleSubmitExam()}
           type="button"
           disabled={!allVisited}
-          className="btn-sm ml-auto"
+          className={`btn-sm ml-auto${allVisited ? ' animate-pulse-soft' : ''}`}
           style={{
-            background: allVisited ? "rgba(22, 163, 74, 0.15)" : "transparent",
+            background: allVisited ? "rgba(22, 163, 74, 0.25)" : "transparent",
             color: allVisited ? "var(--fb-good)" : "var(--text-muted)",
-            border: allVisited ? "1px solid rgba(22,163,74,0.35)" : "1px solid var(--chrome-border)",
+            border: allVisited ? "1px solid rgba(22,163,74,0.5)" : "1px solid var(--chrome-border)",
             cursor: allVisited ? "pointer" : "not-allowed",
-            fontWeight: 500,
+            fontWeight: allVisited ? 600 : 500,
           }}
         >
           Submit Session
@@ -171,6 +171,12 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
         {submitError && (
           <div className="mb-2 text-[8px]" style={{ color: "var(--fb-bad)" }}>
             {submitError}
+          </div>
+        )}
+
+        {allVisited && (
+          <div className="mb-2 text-[8px] font-semibold" style={{ color: "var(--fb-good)" }}>
+            All protocols complete
           </div>
         )}
 

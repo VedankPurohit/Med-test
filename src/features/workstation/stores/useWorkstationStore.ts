@@ -171,6 +171,7 @@ interface WorkstationActions {
   clearSubmissionSummary: () => void;
   resetExam: () => void;
   reorderProtocols: (orderedIds: string[]) => void;
+  quickStartBrain: () => void;
 }
 
 export const useWorkstationStore = create<WorkstationState & WorkstationActions>(
@@ -361,6 +362,31 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
         }
       }
       set({ addedProtocols: reordered });
+    },
+
+    quickStartBrain: () => {
+      set({ phase: 'exam-setup', regionId: 'brain', caseId: 'brain', ...getCleanExamState('brain') });
+
+      const brainProtocols = [
+        { id: 'sagittal-t1-tse', label: 'Sag T1 TSE', shortName: 'Sag T1', orientation: 'SAG', region: 'brain' as const, estimatedTime: '2:45' },
+        { id: 'axial-t2-tse', label: 'Ax T2 TSE', shortName: 'Ax T2', orientation: 'TRA', region: 'brain' as const, estimatedTime: '2:30' },
+        { id: 'axial-t2-flair', label: 'Ax T2 FLAIR', shortName: 'Ax FLAIR', orientation: 'TRA', region: 'brain' as const, estimatedTime: '3:10' },
+        { id: 'axial-dwi', label: 'Ax DWI', shortName: 'Ax DWI', orientation: 'TRA', region: 'brain' as const, estimatedTime: '1:30' },
+      ];
+
+      set({
+        addedProtocols: brainProtocols.map((p) => ({
+          protocolId: p.id,
+          label: p.label,
+          shortName: p.shortName,
+          orientation: p.orientation,
+          region: p.region,
+          status: 'pending' as const,
+          estimatedTime: p.estimatedTime,
+        })),
+        examStartTime: Date.now(),
+        phase: 'protocols-confirmed',
+      });
     },
   }),
 );

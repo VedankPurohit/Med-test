@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import type { ViewType } from '@/features/workstation/types/mri';
 import { usePlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
@@ -226,14 +227,28 @@ function CanvasToolbar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge>
 export default function WorkstationLayout() {
   const phase = useWorkstationStore((s) => s.phase);
   const startSurvey = useWorkstationStore((s) => s.startSurvey);
+  const addedProtocols = useWorkstationStore((s) => s.addedProtocols);
   const bridge = usePlannerBridge();
   const orderConfirmed = useGuidanceStore((s) => s.orderConfirmed);
   const setOrderConfirmed = useGuidanceStore((s) => s.setOrderConfirmed);
+
+  // Auto-skip ordering panel when there's 0 or 1 protocol
+  useEffect(() => {
+    if (phase === 'protocols-confirmed' && addedProtocols.length <= 1 && !orderConfirmed) {
+      setOrderConfirmed(true);
+      startSurvey();
+    }
+  }, [phase, addedProtocols.length, orderConfirmed, setOrderConfirmed, startSurvey]);
 
   const showCanvasPanels = bridge.isActive;
   const showBlackPanels = (phase === 'survey-complete' || phase === 'protocol-active') && !showCanvasPanels;
   const showSurvey = phase === 'survey-running';
   const showOrderPanel = phase === 'protocols-confirmed' && !orderConfirmed;
+
+  // Check if all protocols are completed (for completion overlay)
+  const allProtocolsCompleted = addedProtocols.length > 0 &&
+    addedProtocols.every((p) => p.status === 'completed');
+  const showCompletionOverlay = phase === 'protocol-active' && allProtocolsCompleted && !showCanvasPanels;
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden">
@@ -271,6 +286,34 @@ export default function WorkstationLayout() {
 
             {showSurvey && <SurveyAnimation />}
             {showCanvasPanels && <GuidedPlanningOverlay />}
+            {showCompletionOverlay && (
+              <div
+                className="absolute inset-0 z-20 flex items-center justify-center animate-fade-in"
+                style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+              >
+                <div
+                  className="text-center px-8 py-6 rounded-lg"
+                  style={{
+                    background: 'var(--chrome-surface)',
+                    border: '1px solid rgba(63, 185, 80, 0.3)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  <div
+                    className="text-[13px] font-semibold mb-2"
+                    style={{ color: 'var(--fb-good)' }}
+                  >
+                    All protocols planned
+                  </div>
+                  <div
+                    className="text-[10px]"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Review your results in the Feedback tab, then Submit Session
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <ProtocolBrowser bridge={bridge} />
