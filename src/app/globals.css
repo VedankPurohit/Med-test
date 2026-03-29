@@ -181,6 +181,163 @@ body {
    don't collide with Tailwind's preflight or utility classes.
    ================================================================= */
 
+/* === Workstation utility classes === */
+
+/* Shared button base for small toolbar/action buttons */
+.btn-sm {
+  padding: 2px 8px;
+  font-size: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.btn-sm:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Primary action button (blue fill) */
+.btn-primary {
+  background: var(--accent-blue);
+  color: #ffffff;
+  border: 1px solid var(--accent-blue);
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+/* Ghost button (transparent with border) */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--chrome-border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--chrome-surface-hover);
+  color: var(--text-secondary);
+  border-color: var(--chrome-border-bright);
+}
+
+/* Section header label */
+.section-label {
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Panel heading (slightly larger) */
+.panel-heading {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Styled range inputs */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track-bg);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  border: 1.5px solid var(--chrome-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  border: 1.5px solid var(--chrome-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+/* Styled select dropdowns */
+select.param-select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237a7a8e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 16px;
+  cursor: pointer;
+}
+
+select.param-select:hover {
+  border-color: var(--accent-blue) !important;
+}
+
+/* Number input hide spinners for clean look */
+input[type="number"].param-input {
+  -moz-appearance: textfield;
+}
+
+input[type="number"].param-input::-webkit-outer-spin-button,
+input[type="number"].param-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"].param-input:focus,
+select.param-select:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 1px 0 var(--accent-blue);
+}
+
+/* Modal / dialog shared styles */
+.modal-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.modal-dialog {
+  position: relative;
+  background: var(--chrome-surface);
+  border: 1px solid var(--chrome-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Score badge pill */
+.score-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .planner-legacy {
   overflow: auto;
   height: 100vh;
