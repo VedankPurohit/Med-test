@@ -46,7 +46,8 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("cspine", "default")
       }
     ],
-    protocols: CSPINE_PROTOCOLS
+    protocols: CSPINE_PROTOCOLS,
+    volumeUrl: "/volumes/cspine/cspine_t2.nii.gz"
   },
   {
     id: "tspine",
@@ -58,7 +59,8 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("tspine", "default")
       }
     ],
-    protocols: TSPINE_PROTOCOLS
+    protocols: TSPINE_PROTOCOLS,
+    volumeUrl: "/volumes/tspine/tspine_t2.nii.gz"
   },
   {
     id: "lspine",
@@ -70,7 +72,8 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("lspine", "default")
       }
     ],
-    protocols: LSPINE_PROTOCOLS
+    protocols: LSPINE_PROTOCOLS,
+    volumeUrl: "/volumes/lspine/lspine_t2.nii.gz"
   },
   {
     id: "knee",
@@ -82,7 +85,8 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("knee", "default")
       }
     ],
-    protocols: KNEE_PROTOCOLS
+    protocols: KNEE_PROTOCOLS,
+    volumeUrl: "/volumes/knee/knee_t2.nii.gz"
   }
 ];
 
