@@ -1,11 +1,7 @@
 import { ProtocolConfig } from "@/features/planner/types/planner";
-import { EXTENDED_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
+import { EXTENDED_PARAMETER_SPECS, IR_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
 
 const CSPINE_SPECS = EXTENDED_PARAMETER_SPECS;
-const CSPINE_STIR_SPECS = [
-  ...EXTENDED_PARAMETER_SPECS,
-  { key: "TI", label: "TI", unit: "ms", min: 0, step: 1, weight: 1 }
-];
 
 // PhaseEncDir encoding: 0=AP, 1=PA, 2=RL, 3=LR, 4=SI, 5=IS
 // FatSuppression encoding: 0=None, 1=CHESS, 2=STIR, 3=SPAIR, 4=Dixon
@@ -142,7 +138,7 @@ export const CSPINE_PROTOCOLS: ProtocolConfig[] = [
       { ...makeFullParams(3500, 30, 300, 16, 4, 0.8, 120, 256, 192, 1, 200, 10, 4, 2), TI: 120 }
     ),
     tolerances: { center: 0.24, size: 0.22, rotation: 18, param: 0.22 },
-    parameterSpecs: CSPINE_STIR_SPECS,
+    parameterSpecs: IR_PARAMETER_SPECS,
     clinicalNotes: [
       "Coronal STIR evaluates brachial plexus and nerve roots exiting cervical foramina.",
       "Fat suppression highlights edema in nerve roots, paraspinal muscles, and vertebral bodies."

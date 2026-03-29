@@ -24,6 +24,39 @@ function TipsToggle() {
   );
 }
 
+const STRATEGY_OPTIONS = [
+  { id: 'popup', label: 'Popup' },
+  { id: 'inline', label: 'Inline' },
+] as const;
+
+function TeachingStrategySelector() {
+  const activeStrategy = useGuidanceStore((s) => s.activeTeachingStrategy);
+  const setStrategy = useGuidanceStore((s) => s.setTeachingStrategy);
+  const tipsEnabled = useGuidanceStore((s) => s.tipsEnabled);
+
+  if (!tipsEnabled) return null;
+
+  return (
+    <select
+      value={activeStrategy}
+      onChange={(e) => setStrategy(e.target.value)}
+      className="text-[8px] mr-2 rounded cursor-pointer"
+      style={{
+        background: 'var(--chrome-surface-raised)',
+        color: 'var(--text-secondary)',
+        border: '1px solid var(--chrome-border)',
+        padding: '2px 4px',
+        outline: 'none',
+      }}
+      title="Teaching mode"
+    >
+      {STRATEGY_OPTIONS.map((opt) => (
+        <option key={opt.id} value={opt.id}>{opt.label} Teaching</option>
+      ))}
+    </select>
+  );
+}
+
 const CASE_LABELS: Record<CaseId, string> = {
   brain: 'Brain MRI',
   cspine: 'Cervical Spine MRI',
@@ -122,6 +155,7 @@ export default function WorkstationTopBar() {
       <div className="flex-1" />
 
       <TipsToggle />
+      <TeachingStrategySelector />
 
       <div className="flex items-center gap-2">
         <button

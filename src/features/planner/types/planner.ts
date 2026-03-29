@@ -21,6 +21,7 @@ export const EXTENDED_PARAMETER_KEYS = [
   "ETL",
   "PhaseEncDir",
   "FatSuppression",
+  "TI",
   "ScanTime"
 ] as const;
 

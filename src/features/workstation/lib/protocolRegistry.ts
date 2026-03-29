@@ -16,6 +16,10 @@ const EXAMCARD_TO_PLANNER: Record<string, { caseId: CaseId; plannerProtocolId: s
   'axial-swi':             { caseId: 'brain', plannerProtocolId: 'brain_swi_axial' },
   // Dorsal spine (thoracic)
   'spine-sagittal-t2-tse': { caseId: 'tspine', plannerProtocolId: 'tspine_sag_t2' },
+  'spine-sagittal-t1-dorsal': { caseId: 'tspine', plannerProtocolId: 'tspine_sag_t1' },
+  'spine-axial-t2-dorsal':   { caseId: 'tspine', plannerProtocolId: 'tspine_ax_t2' },
+  'spine-sagittal-stir-dorsal': { caseId: 'tspine', plannerProtocolId: 'tspine_sag_stir' },
+  'spine-axial-t1-post-dorsal': { caseId: 'tspine', plannerProtocolId: 'tspine_ax_t1_post' },
   // Dorsal spine (lumbar)
   'spine-sagittal-t1-tse': { caseId: 'lspine', plannerProtocolId: 'lspine_sag_t1' },
   'spine-sagittal-stir':   { caseId: 'lspine', plannerProtocolId: 'lspine_sag_stir' },

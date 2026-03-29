@@ -1,11 +1,7 @@
 import { ProtocolConfig } from "@/features/planner/types/planner";
-import { EXTENDED_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
+import { EXTENDED_PARAMETER_SPECS, IR_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
 
 const BRAIN_SPECS = EXTENDED_PARAMETER_SPECS;
-const FLAIR_SPECS = [
-  ...EXTENDED_PARAMETER_SPECS,
-  { key: "TI", label: "TI", unit: "ms", min: 0, step: 1, weight: 1 }
-];
 const DWI_SPECS = [
   ...EXTENDED_PARAMETER_SPECS,
   { key: "bValue", label: "b-value", unit: "s/mm2", min: 0, step: 50, integer: true, weight: 1 }
@@ -156,7 +152,7 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
       { ...makeFullParams(7000, 90, 250, 20, 4, 1.0, 120, 256, 192, 1, 180, 10, 0, 0), TI: 1800 }
     ),
     tolerances: { center: 0.21, size: 0.2, rotation: 15, param: 0.2 },
-    parameterSpecs: FLAIR_SPECS,
+    parameterSpecs: IR_PARAMETER_SPECS,
     clinicalNotes: [
       "FLAIR axial slab usually mirrors T2 axial plane with robust supratentorial coverage.",
       "This protocol includes TI scoring in addition to core geometric parameters."

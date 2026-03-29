@@ -42,7 +42,7 @@ async function selectSpine(page: import('@playwright/test').Page) {
 test.describe('Region Selection', () => {
   test('shows region selector with 3 regions on initial load', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('MEDASSIST')).toBeVisible();
+    await expect(page.getByText('MedAssist', { exact: true })).toBeVisible();
     await expect(page.getByText('Select a body region to begin')).toBeVisible();
     await expect(page.getByRole('button', { name: /^B\s+Brain\s+Routine/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Spine/i })).toBeVisible();
@@ -156,9 +156,9 @@ test.describe('Tips Toggle', () => {
 // ─── Top Bar ────────────────────────────────────────────────
 
 test.describe('Top Bar', () => {
-  test('shows MEDASSIST branding', async ({ page }) => {
+  test('shows MedAssist branding', async ({ page }) => {
     await selectBrain(page);
-    await expect(page.getByText('MEDASSIST')).toBeVisible();
+    await expect(page.getByText('MedAssist', { exact: true })).toBeVisible();
   });
 
   test('shows patient name', async ({ page }) => {
@@ -663,7 +663,7 @@ test.describe('Top Bar Elements All Visible', () => {
   test('all top bar elements visible simultaneously', async ({ page }) => {
     await selectBrain(page);
     // All these should be visible at the same time
-    await expect(page.getByText('MEDASSIST')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('MedAssist', { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=DOE, JOHN').first()).toBeVisible();
     await expect(page.getByText('00:00:00')).toBeVisible();
     await expect(page.getByText('Brain MRI', { exact: true })).toBeVisible();

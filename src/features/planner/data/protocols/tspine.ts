@@ -1,5 +1,5 @@
 import { ProtocolConfig } from "@/features/planner/types/planner";
-import { EXTENDED_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
+import { EXTENDED_PARAMETER_SPECS, IR_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
 
 const TSPINE_SPECS = EXTENDED_PARAMETER_SPECS;
 
@@ -119,6 +119,82 @@ export const TSPINE_PROTOCOLS: ProtocolConfig[] = [
         { key: "TR", explanation: "Long TR (4500ms) with T2 weighting highlights CSF and delineates the cord-disc interface." }
       ],
       correctOrderHint: 3
+    }
+  }),
+  makeProtocol({
+    id: "tspine_sag_stir",
+    label: "T-Spine Sagittal STIR",
+    workflowOrder: 4,
+    target: makeTarget(
+      { x: 0.0, y: -0.08, z: 0.0 },
+      { x: 0.50, y: 1.00, z: 0.80 },
+      { rx: 6, ry: 0, rz: 0 },
+      { ...makeFullParams(3800, 40, 320, 18, 3, 0.3, 150, 384, 256, 2, 150, 17, 0, 2), TI: 160 }
+    ),
+    initial: makeTarget(
+      { x: 0.14, y: 0.10, z: 0.25 },
+      { x: 0.35, y: 0.72, z: 0.55 },
+      { rx: -4, ry: -5, rz: 6 },
+      { ...makeFullParams(2800, 30, 360, 14, 4, 1.0, 120, 256, 192, 1, 200, 12, 0, 2), TI: 120 }
+    ),
+    tolerances: { center: 0.26, size: 0.24, rotation: 18, param: 0.22 },
+    parameterSpecs: IR_PARAMETER_SPECS,
+    clinicalNotes: [
+      "STIR sagittal mirrors T2 sagittal geometry for edema-sensitive marrow evaluation.",
+      "TI ~160ms nulls fat signal at 1.5T for homogeneous fat suppression."
+    ],
+    teaching: {
+      purpose: "Detect vertebral body marrow edema, compression fractures, and inflammatory spondylitis with fat-suppressed imaging across the thoracic spine.",
+      planningHint: "Copy the sagittal T2 geometry. STIR suppresses fat uniformly even across the long thoracic kyphosis, making bone marrow edema bright against a dark background.",
+      planningChecklist: [
+        "Geometry matches sagittal T2 for direct comparison",
+        "STIR fat suppression confirmed with TI appropriate for field strength",
+        "Full T1 through T12-L1 coverage maintained"
+      ],
+      parameterHighlights: [
+        { key: "TI", explanation: "TI of 160ms nulls fat signal at 1.5T — like tuning a radio to cancel out one frequency so you can hear another." },
+        { key: "FatSuppression", explanation: "STIR (value 2) provides robust fat suppression even near the sternum and ribs where field inhomogeneity is common." },
+        { key: "TR", explanation: "Long TR (3800ms) combined with STIR gives sensitive detection of thoracic marrow edema patterns." }
+      ],
+      correctOrderHint: 4
+    }
+  }),
+  makeProtocol({
+    id: "tspine_ax_t1_post",
+    label: "T-Spine Axial T1 Post-Contrast",
+    workflowOrder: 5,
+    target: makeTarget(
+      { x: 0.03, y: -0.04, z: 0.02 },
+      { x: 0.88, y: 0.70, z: 0.48 },
+      { rx: -4, ry: 2, rz: 8 },
+      makeFullParams(550, 12, 200, 20, 4, 0.4, 90, 256, 192, 2, 150, 4, 0, 1)
+    ),
+    initial: makeTarget(
+      { x: 0.18, y: 0.11, z: -0.13 },
+      { x: 0.62, y: 0.48, z: 0.32 },
+      { rx: 3, ry: -4, rz: 2 },
+      makeFullParams(780, 20, 240, 14, 5, 1.0, 70, 192, 160, 1, 200, 3, 0, 1)
+    ),
+    tolerances: { center: 0.22, size: 0.20, rotation: 16, param: 0.22 },
+    parameterSpecs: TSPINE_SPECS,
+    clinicalNotes: [
+      "Post-contrast T1 axial highlights enhancing lesions, epidural abscesses, and cord tumors.",
+      "CHESS fat suppression improves conspicuity of gadolinium enhancement against vertebral marrow."
+    ],
+    teaching: {
+      purpose: "Identify enhancing pathology such as thoracic cord tumors, epidural infections, or inflammatory processes after gadolinium contrast administration.",
+      planningHint: "Match axial T2 slice positions for direct comparison. CHESS fat suppression makes gadolinium enhancement more visible against suppressed marrow fat.",
+      planningChecklist: [
+        "Slice positions match pre-contrast axial T2 for comparison",
+        "CHESS fat suppression enabled for enhancement conspicuity",
+        "Scan acquired promptly after contrast injection for optimal enhancement"
+      ],
+      parameterHighlights: [
+        { key: "TR", explanation: "Short TR (550ms) provides T1 weighting where gadolinium-enhanced tissues appear bright." },
+        { key: "FatSuppression", explanation: "CHESS (value 1) selectively suppresses fat signal so enhancing lesions stand out against dark background." },
+        { key: "FOV", explanation: "200mm FOV matches the axial T2 for direct pre/post comparison of thoracic anatomy." }
+      ],
+      correctOrderHint: 5
     }
   })
 ];

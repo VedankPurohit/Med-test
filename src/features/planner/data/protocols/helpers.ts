@@ -30,6 +30,16 @@ export const EXTENDED_PARAMETER_SPECS: ProtocolParameterSpec[] = [
   { key: "ScanTime", label: "Scan Time", unit: "s", min: 0, step: 1, weight: 0 }
 ];
 
+/** TI parameter spec for inversion-recovery sequences (FLAIR, STIR) */
+export const TI_PARAMETER_SPEC: ProtocolParameterSpec =
+  { key: "TI", label: "TI", unit: "ms", min: 0, step: 1, weight: 1 };
+
+/** Extended specs + TI for inversion-recovery protocols */
+export const IR_PARAMETER_SPECS: ProtocolParameterSpec[] = [
+  ...EXTENDED_PARAMETER_SPECS,
+  TI_PARAMETER_SPEC
+];
+
 export const makeParams = (
   TR: number,
   TE: number,

@@ -8,7 +8,7 @@ test.describe('Full Demo Flow — Brain MRI Exam', () => {
   test('Quick Start → Order → Survey → Plan → Check → Report', async ({ page }) => {
     // Step 1: Landing page
     await page.goto('/');
-    await expect(page.getByText('MEDASSIST')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('MedAssist', { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('MRI Planning Training Simulator')).toBeVisible();
 
     // Step 2: Quick Start
@@ -85,9 +85,9 @@ test.describe('Full Demo Flow — Brain MRI Exam', () => {
     await expect(page.getByText('AXIAL')).toBeVisible();
   });
 
-  test('Report page shows MEDASSIST branding', async ({ page }) => {
+  test('Report page shows MedAssist branding', async ({ page }) => {
     await page.goto('/report');
     await expect(page.getByText(/Session Report/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('MEDASSIST').first()).toBeVisible();
+    await expect(page.getByText('MedAssist', { exact: true }).first()).toBeVisible();
   });
 });

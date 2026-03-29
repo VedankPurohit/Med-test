@@ -1,11 +1,7 @@
 import { ProtocolConfig } from "@/features/planner/types/planner";
-import { EXTENDED_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
+import { EXTENDED_PARAMETER_SPECS, IR_PARAMETER_SPECS, makeFullParams, makeProtocol, makeTarget } from "@/features/planner/data/protocols/helpers";
 
 const LSPINE_SPECS = EXTENDED_PARAMETER_SPECS;
-const LSPINE_STIR_SPECS = [
-  ...EXTENDED_PARAMETER_SPECS,
-  { key: "TI", label: "TI", unit: "ms", min: 0, step: 1, weight: 1 }
-];
 
 // PhaseEncDir encoding: 0=AP, 1=PA, 2=RL, 3=LR, 4=SI, 5=IS
 // FatSuppression encoding: 0=None, 1=CHESS, 2=STIR, 3=SPAIR, 4=Dixon
@@ -142,7 +138,7 @@ export const LSPINE_PROTOCOLS: ProtocolConfig[] = [
       { ...makeFullParams(2800, 72, 360, 12, 5, 1.0, 120, 256, 192, 1, 200, 12, 0, 2), TI: 120 }
     ),
     tolerances: { center: 0.24, size: 0.22, rotation: 18, param: 0.22 },
-    parameterSpecs: LSPINE_STIR_SPECS,
+    parameterSpecs: IR_PARAMETER_SPECS,
     clinicalNotes: [
       "STIR sagittal mirrors T2 sagittal geometry for edema-sensitive marrow evaluation.",
       "TI ~160ms nulls fat signal at 1.5T; adjust TI for 3T if needed."
@@ -180,7 +176,7 @@ export const LSPINE_PROTOCOLS: ProtocolConfig[] = [
       { ...makeFullParams(2800, 72, 340, 14, 5, 1.0, 120, 256, 192, 1, 200, 12, 0, 2), TI: 120 }
     ),
     tolerances: { center: 0.24, size: 0.22, rotation: 18, param: 0.22 },
-    parameterSpecs: LSPINE_STIR_SPECS,
+    parameterSpecs: IR_PARAMETER_SPECS,
     clinicalNotes: [
       "Coronal STIR covers paraspinal soft tissues and sacroiliac joints bilaterally.",
       "Useful for detecting bone marrow edema, sacroiliitis, and paraspinal pathology."

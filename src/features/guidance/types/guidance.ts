@@ -6,10 +6,7 @@ export type GuidanceStepId =
   | "info"
   | "parameters"
   | "quiz"
-  | "planning"
-  | "review"
-  | "accepted"
-  | "scanning";
+  | "planning";
 
 /** Props passed to any teaching strategy renderer */
 export type TeachingRenderProps = {

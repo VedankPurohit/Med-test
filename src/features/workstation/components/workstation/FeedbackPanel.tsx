@@ -169,8 +169,23 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
       {/* Score display */}
       <div className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2">
         {submitError && (
-          <div className="mb-2 text-[8px]" style={{ color: "var(--fb-bad)" }}>
-            {submitError}
+          <div
+            className="mb-2 px-2 py-1.5 rounded text-[8px] flex items-center gap-1.5"
+            style={{
+              background: 'rgba(248, 81, 73, 0.08)',
+              border: '1px solid rgba(248, 81, 73, 0.2)',
+              color: 'var(--fb-bad)',
+            }}
+          >
+            <span style={{ fontSize: 11, lineHeight: 1 }}>!</span>
+            <span className="flex-1">{submitError}</span>
+            <button
+              onClick={() => void handleSubmitExam()}
+              className="text-[7px] underline cursor-pointer"
+              style={{ background: 'none', border: 'none', color: 'inherit', fontFamily: 'inherit' }}
+            >
+              Retry
+            </button>
           </div>
         )}
 
