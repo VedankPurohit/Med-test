@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useWorkstationStore } from "@/features/workstation/stores/useWorkstationStore";
+import { useGuidanceStore } from "@/features/guidance/stores/useGuidanceStore";
 
 export default function NotesPanel() {
   const activeIndex = useWorkstationStore((s) => s.activeProtocolIndex);
   const protocols = useWorkstationStore((s) => s.addedProtocols);
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const notes = useGuidanceStore((s) => s.protocolNotes);
+  const setNote = useGuidanceStore((s) => s.setProtocolNote);
 
   const activeProtocol =
     activeIndex !== null ? protocols[activeIndex] : null;
@@ -16,9 +18,9 @@ export default function NotesPanel() {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (!activeKey) return;
-      setNotes((prev) => ({ ...prev, [activeKey]: e.target.value }));
+      setNote(activeKey, e.target.value);
     },
-    [activeKey]
+    [activeKey, setNote]
   );
 
   return (

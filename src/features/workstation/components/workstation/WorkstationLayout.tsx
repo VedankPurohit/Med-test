@@ -232,6 +232,13 @@ export default function WorkstationLayout() {
   const orderConfirmed = useGuidanceStore((s) => s.orderConfirmed);
   const setOrderConfirmed = useGuidanceStore((s) => s.setOrderConfirmed);
 
+  // Reset orderConfirmed when going back to early phases
+  useEffect(() => {
+    if (phase === 'region-select' || phase === 'exam-setup') {
+      setOrderConfirmed(false);
+    }
+  }, [phase, setOrderConfirmed]);
+
   // Auto-skip ordering panel when there's 0 or 1 protocol
   useEffect(() => {
     if (phase === 'protocols-confirmed' && addedProtocols.length <= 1 && !orderConfirmed) {

@@ -8,6 +8,7 @@ interface GuidanceState {
   activeTeachingStrategy: string;
   sequenceSteps: Record<string, GuidanceStepId>;
   orderConfirmed: boolean;
+  protocolNotes: Record<string, string>;
 }
 
 interface GuidanceActions {
@@ -20,6 +21,8 @@ interface GuidanceActions {
   setSequenceStep: (protocolId: string, step: GuidanceStepId) => void;
   getSequenceStep: (protocolId: string) => GuidanceStepId | undefined;
   setOrderConfirmed: (confirmed: boolean) => void;
+  setProtocolNote: (protocolId: string, note: string) => void;
+  getProtocolNote: (protocolId: string) => string;
   resetGuidance: () => void;
 }
 
@@ -30,6 +33,7 @@ const INITIAL_STATE: GuidanceState = {
   activeTeachingStrategy: "popup",
   sequenceSteps: {},
   orderConfirmed: false,
+  protocolNotes: {},
 };
 
 export const useGuidanceStore = create<GuidanceState & GuidanceActions>(
@@ -57,6 +61,13 @@ export const useGuidanceStore = create<GuidanceState & GuidanceActions>(
     getSequenceStep: (protocolId) => get().sequenceSteps[protocolId],
 
     setOrderConfirmed: (confirmed) => set({ orderConfirmed: confirmed }),
+
+    setProtocolNote: (protocolId, note) =>
+      set((s) => ({
+        protocolNotes: { ...s.protocolNotes, [protocolId]: note },
+      })),
+
+    getProtocolNote: (protocolId) => get().protocolNotes[protocolId] ?? "",
 
     resetGuidance: () => set(INITIAL_STATE),
   })
