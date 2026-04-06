@@ -127,15 +127,15 @@ function ParamGroup({
   if (specs.length === 0) return null;
   return (
     <div
-      className="pb-2.5"
+      className="pb-1.5"
       style={{ borderBottom: '1px solid var(--chrome-border-light)' }}
     >
       <div
-        className="section-label mb-1.5"
+        className="section-label mb-1"
       >
         {title}
       </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
         {specs.map((spec) => (
           <ParamInput
             key={String(spec.key)}
@@ -188,7 +188,7 @@ export default function DynamicParameterPanel({ bridge }: { bridge: PlannerBridg
     <div className="flex flex-col h-full">
       {/* Header */}
       <div
-        className="flex items-center gap-2 px-3 py-2 shrink-0"
+        className="flex items-center gap-2 px-3 py-1 shrink-0"
         style={{ borderBottom: '1px solid var(--chrome-border)' }}
       >
         <span className="panel-heading">
@@ -199,79 +199,80 @@ export default function DynamicParameterPanel({ bridge }: { bridge: PlannerBridg
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-2.5 space-y-3">
-        {/* Computed Scan Time */}
-        <div
-          className="flex items-center justify-between px-2.5 py-1.5 rounded"
-          style={{ background: 'var(--accent-blue-dim)', border: '1px solid rgba(37,99,235,0.2)' }}
-        >
-          <span className="text-[8px] uppercase tracking-wider font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Scan Time
-          </span>
-          <span className="text-[12px] font-bold tabular-nums" style={{ color: 'var(--accent-blue)', fontVariantNumeric: 'tabular-nums' }}>
-            {scanTime < 60
-              ? `${scanTime.toFixed(1)}s`
-              : `${Math.floor(scanTime / 60)}:${String(Math.round(scanTime % 60)).padStart(2, '0')}`}
-          </span>
-        </div>
-
-        {/* Grouped parameters */}
-        <ParamGroup title="Timing" specs={groups.timing} params={params} targetParams={targetParams} tipsEnabled={tipsEnabled} onChange={handleChange} />
-        <ParamGroup title="Geometry" specs={groups.geometry} params={params} targetParams={targetParams} tipsEnabled={tipsEnabled} onChange={handleChange} />
-        <ParamGroup title="Acquisition" specs={groups.acquisition} params={params} targetParams={targetParams} tipsEnabled={tipsEnabled} onChange={handleChange} />
-        <ParamGroup title="Other" specs={groups.other} params={params} targetParams={targetParams} tipsEnabled={tipsEnabled} onChange={handleChange} />
-
-        {/* Coverage sliders */}
-        <div>
-          <div className="section-label mb-1.5">
-            Coverage
+      <div className="flex-1 overflow-y-auto px-3 py-1.5">
+        {/* Scan Time + Coverage in mm */}
+        <div className="flex items-center gap-3 mb-1.5">
+          <div
+            className="flex items-center gap-1.5 px-2 py-1 rounded"
+            style={{ background: 'var(--accent-blue-dim)', border: '1px solid rgba(37,99,235,0.2)' }}
+          >
+            <span className="text-[7px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Time</span>
+            <span className="text-[10px] font-bold tabular-nums" style={{ color: 'var(--accent-blue)' }}>
+              {scanTime < 60
+                ? `${scanTime.toFixed(1)}s`
+                : `${Math.floor(scanTime / 60)}:${String(Math.round(scanTime % 60)).padStart(2, '0')}`}
+            </span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {(['x', 'y', 'z'] as const).map((axis) => (
-              <label key={axis} className="text-[8px] block" style={{ color: 'var(--text-muted)' }}>
-                <span className="flex justify-between mb-0.5">
-                  <span>{axis.toUpperCase()}</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    {(planner.box?.size[axis] ?? 0.5).toFixed(2)}
-                  </span>
-                </span>
-                <input
-                  type="range" min="0.2" max="1.8" step="0.01"
-                  value={planner.box?.size[axis] ?? 0.5}
-                  onChange={(e) => planner.changeSize(axis, Number(e.target.value))}
-                  className="w-full"
-                />
-              </label>
-            ))}
+          <div className="text-[7px]" style={{ color: 'var(--text-muted)' }}>
+            Coverage: <span style={{ color: 'var(--text-secondary)' }}>
+              {Math.round((planner.box?.size.x ?? 0.5) * 250)}&times;{Math.round((planner.box?.size.y ?? 0.5) * 250)}&times;{Math.round((planner.box?.size.z ?? 0.5) * 250)}mm
+            </span>
           </div>
         </div>
 
-        {/* Angulation sliders */}
-        <div>
-          <div className="section-label mb-1.5">
-            Angulation
+        {/* Two-column: GEOMETRY | CONTRAST */}
+        <div className="flex gap-3 mb-1.5">
+          <div className="flex-1 min-w-0">
+            <ParamGroup title="Geometry" specs={groups.geometry} params={params} targetParams={targetParams} tipsEnabled={tipsEnabled} onChange={handleChange} />
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              { axis: 'rx' as const, label: 'Sag' },
-              { axis: 'ry' as const, label: 'Cor' },
-              { axis: 'rz' as const, label: 'Ax' },
-            ]).map(({ axis, label }) => (
-              <label key={axis} className="text-[8px] block" style={{ color: 'var(--text-muted)' }}>
-                <span className="flex justify-between mb-0.5">
-                  <span>{label}</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    {(planner.box?.rotation[axis] ?? 0).toFixed(0)}°
+          <div className="flex-1 min-w-0">
+            <ParamGroup title="Contrast" specs={[...groups.timing, ...groups.acquisition, ...groups.other]} params={params} targetParams={targetParams} tipsEnabled={tipsEnabled} onChange={handleChange} />
+          </div>
+        </div>
+
+        {/* Coverage + Angulation sliders in a compact row */}
+        <div className="flex gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-[7px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Coverage</div>
+            <div className="grid grid-cols-3 gap-1">
+              {(['x', 'y', 'z'] as const).map((axis) => (
+                <label key={axis} className="text-[7px] block" style={{ color: 'var(--text-muted)' }}>
+                  <span className="flex justify-between">
+                    <span>{axis.toUpperCase()}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{(planner.box?.size[axis] ?? 0.5).toFixed(2)}</span>
                   </span>
-                </span>
-                <input
-                  type="range" min="-45" max="45" step="1"
-                  value={planner.box?.rotation[axis] ?? 0}
-                  onChange={(e) => planner.changeRotation(axis, Number(e.target.value))}
-                  className="w-full"
-                />
-              </label>
-            ))}
+                  <input
+                    type="range" min="0.2" max="1.8" step="0.01"
+                    value={planner.box?.size[axis] ?? 0.5}
+                    onChange={(e) => planner.changeSize(axis, Number(e.target.value))}
+                    className="w-full"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[7px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Angulation</div>
+            <div className="grid grid-cols-3 gap-1">
+              {([
+                { axis: 'rx' as const, label: 'Sag' },
+                { axis: 'ry' as const, label: 'Cor' },
+                { axis: 'rz' as const, label: 'Ax' },
+              ]).map(({ axis, label }) => (
+                <label key={axis} className="text-[7px] block" style={{ color: 'var(--text-muted)' }}>
+                  <span className="flex justify-between">
+                    <span>{label}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{(planner.box?.rotation[axis] ?? 0).toFixed(0)}&deg;</span>
+                  </span>
+                  <input
+                    type="range" min="-45" max="45" step="1"
+                    value={planner.box?.rotation[axis] ?? 0}
+                    onChange={(e) => planner.changeRotation(axis, Number(e.target.value))}
+                    className="w-full"
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         </div>
       </div>

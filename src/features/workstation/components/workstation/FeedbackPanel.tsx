@@ -9,6 +9,46 @@ import { useVolume } from '@/features/volume/hooks/useVolume';
 import { ScanResultPanel } from '@/features/guidance/components/ScanResultPanel';
 import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
 
+function barColor(percent: number): string {
+  if (percent >= 75) return 'var(--fb-good)';
+  if (percent >= 55) return 'var(--fb-warn)';
+  return 'var(--fb-bad)';
+}
+
+function CoachingBar({ label, percent, coaching }: { label: string; percent: number; coaching: string | null }) {
+  const color = barColor(percent);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>
+          {label}
+        </span>
+        <span className="text-[9px] font-semibold tabular-nums" style={{ color }}>
+          {percent}%
+        </span>
+      </div>
+      <div
+        className="rounded-full overflow-hidden"
+        style={{ height: 4, background: 'var(--chrome-surface-hover)' }}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${Math.max(percent, 2)}%`,
+            background: color,
+            transition: 'width 0.4s ease',
+          }}
+        />
+      </div>
+      {coaching && (
+        <div className="text-[7px] mt-0.5 leading-snug" style={{ color: 'var(--text-muted)' }}>
+          {coaching}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
   const router = useRouter();
   const { planner } = bridge;
@@ -220,88 +260,52 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
               </span>
             </div>
 
-            {/* Component scores */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mb-2.5">
-              {[
-                { label: 'Position', value: lastScore.componentScores.positionPercent },
-                { label: 'Coverage', value: lastScore.componentScores.coveragePercent },
-                { label: 'Angulation', value: lastScore.componentScores.angulationPercent },
-                { label: 'Parameters', value: lastScore.componentScores.parametersPercent },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between px-1.5 py-0.5 rounded"
-                  style={{ background: 'var(--chrome-surface-hover)' }}
-                >
-                  <div className="text-[7px] uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                    {item.label}
-                  </div>
-                  <div
-                    className="text-[10px] font-semibold tabular-nums"
-                    style={{
-                      color:
-                        item.value >= 75
-                          ? 'var(--fb-good)'
-                          : item.value >= 55
-                            ? 'var(--fb-warn)'
-                            : 'var(--fb-bad)',
-                    }}
-                  >
-                    {item.value}%
-                  </div>
-                </div>
-              ))}
+            {/* Coaching bars */}
+            <div className="space-y-1.5 mb-2.5">
+              <CoachingBar
+                label="POSITION"
+                percent={lastScore.componentScores.positionPercent}
+                coaching={findings.find((f) => f.code === 'position_off')?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="ANGULATION"
+                percent={lastScore.componentScores.angulationPercent}
+                coaching={findings.find((f) => f.code === 'angle_wrong')?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="COVERAGE"
+                percent={lastScore.componentScores.coveragePercent}
+                coaching={findings.find((f) => f.code === 'fov_too_small')?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="PARAMETERS"
+                percent={lastScore.componentScores.parametersPercent}
+                coaching={findings.find((f) => f.code.startsWith('param_mismatch_'))?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="OVERALL"
+                percent={lastScore.finalScorePercent}
+                coaching={null}
+              />
             </div>
 
-            {/* Structured findings */}
-            {findings.length > 0 && (
-              <div className="space-y-1.5 mb-2.5">
-                {findings.map((f, i) => (
-                  <div
-                    key={`${i}-${f.code}`}
-                    className="text-[9px] leading-snug rounded px-2 py-1.5"
-                    style={{
-                      background:
-                        f.severity === 'error'
-                          ? 'rgba(248,81,73,0.08)'
-                          : f.severity === 'warning'
-                            ? 'rgba(210,153,34,0.08)'
-                            : 'rgba(63,185,80,0.08)',
-                      borderLeft: `2px solid ${
-                        f.severity === 'error'
-                          ? 'var(--fb-bad)'
-                          : f.severity === 'warning'
-                            ? 'var(--fb-warn)'
-                            : 'var(--fb-good)'
-                      }`,
-                    }}
-                  >
-                    <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                      {f.title}
-                    </div>
-                    <div style={{ color: 'var(--text-secondary)' }}>{f.message}</div>
-                    {f.suggestion && (
-                      <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
-                        Tip: {f.suggestion}
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {/* Midline / Symmetry findings */}
+            {findings.filter((f) => f.code === 'midline_off' || f.code === 'symmetry_off').map((f, i) => (
+              <div
+                key={`extra-${i}-${f.code}`}
+                className="text-[8px] leading-snug rounded px-2 py-1 mb-1.5"
+                style={{
+                  background: f.severity === 'error' ? 'rgba(248,81,73,0.08)' : 'rgba(210,153,34,0.08)',
+                  borderLeft: `2px solid ${f.severity === 'error' ? 'var(--fb-bad)' : 'var(--fb-warn)'}`,
+                }}
+              >
+                <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{f.title}</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{f.message}</div>
+                {f.suggestion && (
+                  <div style={{ color: 'var(--text-muted)', marginTop: 1 }}>{f.suggestion}</div>
+                )}
               </div>
-            )}
-
-            {/* Feedback items (legacy) */}
-            <div className="space-y-1">
-              {lastScore.feedback.map((line, i) => (
-                <div
-                  key={`${i}-${line}`}
-                  className="text-[9px] leading-snug"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {line}
-                </div>
-              ))}
-            </div>
+            ))}
 
             {/* Accept / Run Scan / Show Correct Planning buttons */}
             <div className="flex gap-1.5 mt-2.5 flex-wrap">

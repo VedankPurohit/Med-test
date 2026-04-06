@@ -126,11 +126,15 @@ export const LocalizerCanvas = ({
     }
 
     if (box) {
+      // Draw volume boundary (unrotated extent) before the rotated box
+      drawVolumeBoundary(ctx, box, viewId, editable ? "#57fff1" : "#c4a44d", canvasWidth, canvasHeight);
+
       drawOutlineForMode(ctx, box, viewId, boxRenderMode, {
-        color: editable ? "#57fff1" : "#ffe49d",
-        lineWidth: editable ? 2.8 : 2,
+        color: editable ? "#57fff1" : "#c4a44d",
+        lineWidth: editable ? 3.5 : 2,
         dashed: false,
-        alpha: 1
+        alpha: editable ? 1 : 0.7,
+        glow: editable,
       }, canvasWidth, canvasHeight);
 
       if (editable && boxRenderMode === "flat2d") {
@@ -138,13 +142,10 @@ export const LocalizerCanvas = ({
       }
     }
 
-    if (!editable) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      ctx.fillRect(0, canvasHeight - 26, canvasWidth, 26);
-      ctx.fillStyle = "#f4f7fb";
-      ctx.font = "12px sans-serif";
-      ctx.fillText("Derived from shared 3D prescription", 10, canvasHeight - 9);
-    }
+    // On-canvas label: EDITABLE or DERIVED
+    ctx.font = "bold 9px sans-serif";
+    ctx.fillStyle = editable ? "rgba(87,255,241,0.55)" : "rgba(196,164,77,0.5)";
+    ctx.fillText(editable ? "EDITABLE" : "DERIVED", 8, 16);
   }, [box, boxRenderMode, canvasWidth, canvasHeight, editable, hoveredHandle, image, showTarget, targetBox, viewId]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -237,6 +238,7 @@ type OutlineStyle = {
   lineWidth: number;
   dashed: boolean;
   alpha: number;
+  glow?: boolean;
 };
 
 const CUBE_EDGE_INDEX_PAIRS: Array<[number, number]> = [
@@ -277,6 +279,10 @@ const drawProjectedOutline = (
   if (style.dashed) {
     ctx.setLineDash([7, 5]);
   }
+  if (style.glow) {
+    ctx.shadowColor = style.color;
+    ctx.shadowBlur = 6;
+  }
 
   for (const [start, end] of CUBE_EDGE_INDEX_PAIRS) {
     const startPoint = projectedCorners[start];
@@ -289,6 +295,7 @@ const drawProjectedOutline = (
     ctx.lineTo(endPoint.x, endPoint.y);
     ctx.stroke();
   }
+  ctx.shadowBlur = 0;
 
   // Draw outer hull to improve visibility over noisy localizers.
   ctx.lineWidth = Math.max(1, style.lineWidth * 0.85);
@@ -302,10 +309,16 @@ const drawProjectedOutline = (
 
   ctx.setLineDash([]);
   const center = normToScreen(geometry.center2D, w, h);
+  // Crosshair instead of dot
+  const arm = 10;
   ctx.beginPath();
-  ctx.arc(center.x, center.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = style.color;
-  ctx.fill();
+  ctx.moveTo(center.x - arm, center.y);
+  ctx.lineTo(center.x + arm, center.y);
+  ctx.moveTo(center.x, center.y - arm);
+  ctx.lineTo(center.x, center.y + arm);
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
   ctx.restore();
 };
 
@@ -331,6 +344,10 @@ const drawFlatOutline = (
   if (style.dashed) {
     ctx.setLineDash([7, 5]);
   }
+  if (style.glow) {
+    ctx.shadowColor = style.color;
+    ctx.shadowBlur = 6;
+  }
 
   ctx.beginPath();
   ctx.moveTo(corners[0].x, corners[0].y);
@@ -339,13 +356,55 @@ const drawFlatOutline = (
   }
   ctx.closePath();
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
   ctx.setLineDash([]);
   const center = normToScreen(geometry.center2D, w, h);
+  // Crosshair instead of dot
+  const arm = 10;
   ctx.beginPath();
-  ctx.arc(center.x, center.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = style.color;
-  ctx.fill();
+  ctx.moveTo(center.x - arm, center.y);
+  ctx.lineTo(center.x + arm, center.y);
+  ctx.moveTo(center.x, center.y - arm);
+  ctx.lineTo(center.x, center.y + arm);
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+};
+
+/** Draw a dashed rectangle showing the unrotated volume extent */
+const drawVolumeBoundary = (
+  ctx: CanvasRenderingContext2D,
+  box: PlannerBox,
+  viewId: ViewId,
+  color: string,
+  w: number,
+  h: number
+) => {
+  // Create a zero-rotation copy to show the axis-aligned extent
+  const unrotated: PlannerBox = {
+    center: box.center,
+    size: box.size,
+    rotation: { rx: 0, ry: 0, rz: 0 },
+  };
+  const geometry = getFlatGeometry(unrotated, viewId);
+  const corners = geometry.projected.map((p) => normToScreen(p, w, h));
+  if (corners.length < 3) return;
+
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  for (let i = 1; i < corners.length; i++) {
+    ctx.lineTo(corners[i].x, corners[i].y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
 };
 
@@ -432,17 +491,19 @@ const drawHandles = (
 
   ctx.save();
 
-  // Corner handles: filled squares
+  // Corner handles: circles (not squares)
   for (let i = 0; i < 4; i++) {
     const c = corners[i];
     const isHovered = hoveredHandle?.kind === "corner" && hoveredHandle.index === i;
-    const halfSize = isHovered ? 4 : 3;
+    const radius = isHovered ? 8 : 6;
 
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = "#57fff1";
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
-    ctx.fillRect(c.x - halfSize, c.y - halfSize, halfSize * 2, halfSize * 2);
-    ctx.strokeRect(c.x - halfSize, c.y - halfSize, halfSize * 2, halfSize * 2);
+    ctx.lineWidth = 1.5;
+    ctx.fill();
+    ctx.stroke();
   }
 
   // Edge midpoint handles: circles
@@ -451,7 +512,7 @@ const drawHandles = (
     const b = corners[(i + 1) % 4];
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const isHovered = hoveredHandle?.kind === "edge" && hoveredHandle.index === i;
-    const radius = isHovered ? 4 : 3;
+    const radius = isHovered ? 6 : 5;
 
     ctx.beginPath();
     ctx.arc(mid.x, mid.y, radius, 0, Math.PI * 2);
@@ -462,19 +523,20 @@ const drawHandles = (
     ctx.stroke();
   }
 
-  // Rotation ring indicator when hovering rotate zone
-  if (hoveredHandle?.kind === "rotate") {
+  // Rotation ring: always visible (brighter on hover)
+  {
     let maxDist = 0;
     for (const c of corners) {
       const d = Math.sqrt(squaredDistance(center2D, c));
       if (d > maxDist) maxDist = d;
     }
-    const ringRadius = maxDist + 8;
+    const ringRadius = maxDist + 10;
+    const isHovered = hoveredHandle?.kind === "rotate";
 
     ctx.beginPath();
     ctx.arc(center2D.x, center2D.y, ringRadius, 0, Math.PI * 2);
     ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "rgba(87, 255, 241, 0.5)";
+    ctx.strokeStyle = isHovered ? "rgba(87, 255, 241, 0.5)" : "rgba(87, 255, 241, 0.2)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.setLineDash([]);

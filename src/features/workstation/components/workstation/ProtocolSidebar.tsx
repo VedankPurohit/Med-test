@@ -49,18 +49,15 @@ export default function ProtocolSidebar() {
           protocols.map((protocol, index) => {
             const isActive = index === activeIndex;
             return (
-              <button
-                type="button"
+              <div
                 key={protocol.protocolId}
-                className="flex items-center gap-2 px-2 py-1.5 transition-colors group w-full text-left"
+                className="group flex items-stretch"
                 style={{
-                  cursor: canActivate ? 'pointer' : 'default',
                   background: isActive ? 'var(--sidebar-row-active)' : 'transparent',
                   borderLeft: isActive
                     ? '2px solid var(--accent-blue)'
                     : '2px solid transparent',
                 }}
-                onClick={() => canActivate && activateProtocol(index)}
                 onMouseEnter={(e) => {
                   if (!isActive) e.currentTarget.style.background = 'var(--sidebar-row-hover)';
                 }}
@@ -68,51 +65,60 @@ export default function ProtocolSidebar() {
                   if (!isActive) e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <StatusIcon status={protocol.status} size={8} />
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-2 px-2 py-1.5 text-left transition-colors"
+                  style={{ cursor: canActivate ? 'pointer' : 'default' }}
+                  onClick={() => canActivate && activateProtocol(index)}
+                >
+                  <StatusIcon status={protocol.status} size={8} />
 
-                <div className="flex-1 min-w-0">
-                  <div
-                    className="text-[10px] truncate"
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="text-[10px] truncate"
+                      style={{
+                        color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                        fontWeight: isActive ? 500 : 400,
+                      }}
+                    >
+                      {protocol.shortName}
+                    </div>
+                    {protocol.estimatedTime && (
+                      <div
+                        className="text-[8px] truncate"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        {protocol.estimatedTime}
+                      </div>
+                    )}
+                  </div>
+
+                  <span
+                    className="text-[7px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0"
                     style={{
-                      color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                      fontWeight: isActive ? 500 : 400,
+                      background: isActive ? 'var(--accent-blue-dim)' : 'var(--chrome-surface-raised)',
+                      color: isActive ? 'var(--accent-blue)' : 'var(--text-muted)',
                     }}
                   >
-                    {protocol.shortName}
-                  </div>
-                  {protocol.estimatedTime && (
-                    <div
-                      className="text-[8px] truncate"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      {protocol.estimatedTime}
-                    </div>
-                  )}
-                </div>
+                    {protocol.orientation}
+                  </span>
+                </button>
 
-                <span
-                  className="text-[7px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0"
-                  style={{
-                    background: isActive ? 'var(--accent-blue-dim)' : 'var(--chrome-surface-raised)',
-                    color: isActive ? 'var(--accent-blue)' : 'var(--text-muted)',
-                  }}
-                >
-                  {protocol.orientation}
-                </span>
-
-                {canRemove && (
+                {canRemove ? (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       removeProtocol(protocol.protocolId);
                     }}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] transition-opacity cursor-pointer"
+                    className="px-2 text-[10px] opacity-0 transition-opacity cursor-pointer group-hover:opacity-100"
                     style={{ color: 'var(--fb-bad)' }}
+                    aria-label={`Remove ${protocol.shortName}`}
                   >
                     &#x2715;
                   </button>
-                )}
-              </button>
+                ) : null}
+              </div>
             );
           })
         )}

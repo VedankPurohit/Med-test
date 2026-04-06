@@ -225,10 +225,11 @@ const angulationHint = (
   const drx = angleDiff(box.rotation.rx, score.target.rotation.rx);
   const dry = angleDiff(box.rotation.ry, score.target.rotation.ry);
   const drz = angleDiff(box.rotation.rz, score.target.rotation.rz);
-  // Use signed difference for direction
-  const sRx = score.target.rotation.rx - box.rotation.rx;
-  const sRy = score.target.rotation.ry - box.rotation.ry;
-  const sRz = score.target.rotation.rz - box.rotation.rz;
+  // Use signed difference wrapped to shortest path for direction
+  const wrapSigned = (d: number) => { let r = d % 360; if (r > 180) r -= 360; if (r <= -180) r += 360; return r; };
+  const sRx = wrapSigned(score.target.rotation.rx - box.rotation.rx);
+  const sRy = wrapSigned(score.target.rotation.ry - box.rotation.ry);
+  const sRz = wrapSigned(score.target.rotation.rz - box.rotation.rz);
   const parts: string[] = [];
   if (drx > 1) {
     const dir = sRx > 0 ? "anteriorly" : "posteriorly";
@@ -304,6 +305,39 @@ const buildFindings = (
     });
   }
 
+  // Midline / symmetry checks — mutually exclusive (a protocol is either sagittal or axial oriented)
+  if (box) {
+    const labelLower = protocol.label.toLowerCase();
+    const isSagittal = /\bsag/i.test(labelLower);
+    const isAxial = !isSagittal && /\bax/i.test(labelLower);
+
+    if (isSagittal) {
+      const offMidline = Math.abs(box.center.x);
+      if (offMidline > 0.04) {
+        const mmOff = Math.round(offMidline * 250);
+        findings.push({
+          code: "midline_off",
+          severity: offMidline > 0.1 ? "error" : "warning",
+          title: "Midline Alignment",
+          message: `Box center is ${mmOff}mm off midline.`,
+          suggestion: `Shift box ${box.center.x > 0 ? "left" : "right"} to align with the interhemispheric fissure.`
+        });
+      }
+    } else if (isAxial) {
+      const asymmetry = Math.abs(box.center.x);
+      if (asymmetry > 0.03) {
+        const mmOff = Math.round(asymmetry * 250);
+        findings.push({
+          code: "symmetry_off",
+          severity: asymmetry > 0.08 ? "error" : "warning",
+          title: "Left-Right Symmetry",
+          message: `Coverage is asymmetric: center offset ${mmOff}mm from midline.`,
+          suggestion: `Center the box to ensure equal left-right brain coverage.`
+        });
+      }
+    }
+  }
+
   if (findings.length === 0) {
     findings.push({
       code: "planning_ready",
@@ -315,7 +349,7 @@ const buildFindings = (
     });
   }
 
-  return findings.slice(0, 4);
+  return findings.slice(0, 6);
 };
 
 export const computeScore = (

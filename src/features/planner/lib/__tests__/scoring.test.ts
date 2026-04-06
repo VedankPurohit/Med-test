@@ -155,4 +155,71 @@ describe("scoring core", () => {
     cloned.center.x = 999;
     expect(protocol.target.center.x).toBe(0);
   });
+
+  it("returns midline_off finding for sagittal protocol with off-center box", () => {
+    const sagProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t1_sagittal",
+      label: "Brain T1 Sagittal"
+    };
+    const offCenterBox: PlannerBox = {
+      center: { x: 0.12, y: 0, z: 0 },
+      size: deepClone(sagProtocol.target.size),
+      rotation: deepClone(sagProtocol.target.rotation)
+    };
+    const score = computeScore(sagProtocol, offCenterBox, deepClone(sagProtocol.target.params), false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings!.some((f) => f.code === "midline_off")).toBe(true);
+    const midline = score.findings!.find((f) => f.code === "midline_off")!;
+    expect(midline.severity).toBe("error");
+    expect(midline.suggestion).toContain("left");
+  });
+
+  it("does not produce midline_off for sagittal protocol when centered", () => {
+    const sagProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t1_sagittal",
+      label: "Brain T1 Sagittal"
+    };
+    const centeredBox: PlannerBox = {
+      center: { x: 0.02, y: 0, z: 0 },
+      size: deepClone(sagProtocol.target.size),
+      rotation: deepClone(sagProtocol.target.rotation)
+    };
+    const score = computeScore(sagProtocol, centeredBox, deepClone(sagProtocol.target.params), false, "brain");
+    expect(score.findings!.some((f) => f.code === "midline_off")).toBe(false);
+  });
+
+  it("returns symmetry_off finding for axial protocol with asymmetric coverage", () => {
+    const axProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t2_axial",
+      label: "Brain T2 Axial"
+    };
+    const asymBox: PlannerBox = {
+      center: { x: 0.1, y: 0, z: 0 },
+      size: deepClone(axProtocol.target.size),
+      rotation: deepClone(axProtocol.target.rotation)
+    };
+    const score = computeScore(axProtocol, asymBox, deepClone(axProtocol.target.params), false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings!.some((f) => f.code === "symmetry_off")).toBe(true);
+    const sym = score.findings!.find((f) => f.code === "symmetry_off")!;
+    expect(sym.suggestion).toContain("equal left-right");
+  });
+
+  it("does not produce symmetry_off for non-axial protocols", () => {
+    const sagProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t1_sagittal",
+      label: "Brain T1 Sagittal"
+    };
+    const offBox: PlannerBox = {
+      center: { x: 0.1, y: 0, z: 0 },
+      size: deepClone(sagProtocol.target.size),
+      rotation: deepClone(sagProtocol.target.rotation)
+    };
+    const score = computeScore(sagProtocol, offBox, deepClone(sagProtocol.target.params), false, "brain");
+    expect(score.findings!.some((f) => f.code === "symmetry_off")).toBe(false);
+  });
 });

@@ -20,6 +20,8 @@ import SequenceOrderPanel from '@/features/guidance/components/SequenceOrderPane
 import { GuidedPlanningOverlay } from '@/features/guidance/components/GuidedPlanningOverlay';
 import { GuidanceFlowOverlays } from '@/features/guidance/components/GuidanceFlowOverlays';
 import { useGuidanceStore } from '@/features/guidance/stores/useGuidanceStore';
+import { VIEW_CONFIG } from '@/features/planner/lib/geometry';
+import type { ViewId } from '@/features/planner/types/planner';
 
 const VIEWS: ViewType[] = ['sagittal', 'coronal', 'axial'];
 const VIEW_LABELS: Record<ViewType, string> = {
@@ -224,6 +226,49 @@ function CanvasToolbar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge>
   );
 }
 
+/** Persistent protocol context shown during planning */
+function ProtocolContextBar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge> }) {
+  const protocol = bridge.planner.currentProtocol;
+  if (!protocol) return null;
+
+  const params = bridge.planner.params ?? {};
+  const editableViews = (Object.entries(VIEW_CONFIG) as [ViewId, typeof VIEW_CONFIG[ViewId]][])
+    .filter(([, cfg]) => cfg.editable)
+    .map(([id]) => id.toUpperCase())
+    .join(' + ');
+
+  const slices = params.Slices ?? 0;
+  const thickness = params.SliceThickness ?? 0;
+
+  return (
+    <div
+      className="shrink-0 px-3 py-1"
+      style={{
+        background: 'var(--accent-blue-dim)',
+        borderBottom: '1px solid rgba(37,99,235,0.15)',
+      }}
+    >
+      <div className="flex items-center gap-2 text-[9px]">
+        <span className="font-semibold" style={{ color: 'var(--accent-blue)' }}>
+          {protocol.label}
+        </span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          TR={params.TR ?? '—'}ms &nbsp; TE={params.TE ?? '—'}ms &nbsp; FOV={params.FOV ?? '—'}mm &nbsp;
+          {slices}sl&times;{thickness}mm
+        </span>
+        <span className="ml-auto font-medium" style={{ color: 'rgba(87,255,241,0.7)' }}>
+          Plan on: {editableViews}
+        </span>
+      </div>
+      {protocol.teaching?.planningHint && (
+        <div className="text-[8px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+          {protocol.teaching.planningHint}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WorkstationLayout() {
   const phase = useWorkstationStore((s) => s.phase);
   const startSurvey = useWorkstationStore((s) => s.startSurvey);
@@ -267,6 +312,7 @@ export default function WorkstationLayout() {
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Canvas toolbar (only when canvases are shown) */}
           {showCanvasPanels && <CanvasToolbar bridge={bridge} />}
+          {showCanvasPanels && <ProtocolContextBar bridge={bridge} />}
 
           {/* Image panels row */}
           <div
