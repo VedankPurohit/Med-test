@@ -63,9 +63,27 @@ export default function PlanningCanvasPanel({
   const plane = VIEW_TO_PLANE[view];
   const maxSlices = volume ? getSliceCount(volume, plane) : 0;
 
-  // Auto window/level from volume data range
-  const windowCenter = volume ? (volume.dataMin + volume.dataMax) / 2 : 500;
-  const windowWidth = volume ? (volume.dataMax - volume.dataMin) * 0.85 : 1000;
+  // Percentile-based auto window/level for correct MRI contrast.
+  // Uses the 2nd/98th percentile of non-zero voxels to exclude background
+  // air and rare outlier intensities. This produces clinically appropriate
+  // contrast for both T1 (bright fat, dark CSF) and T2 (bright CSF) data.
+  const autoCenter = volume
+    ? (volume.dataP2 + volume.dataP98) / 2
+    : 500;
+  const autoWidth = volume
+    ? (volume.dataP98 - volume.dataP2) * 1.1
+    : 1000;
+
+  // User-adjustable window/level via right-click drag (standard DICOM interaction)
+  const [wlOffset, setWlOffset] = useState<{ dc: number; dw: number }>({ dc: 0, dw: 0 });
+  const windowCenter = autoCenter + wlOffset.dc;
+  const windowWidth = Math.max(1, autoWidth + wlOffset.dw);
+
+  // Reset W/L offset when volume changes
+  useEffect(() => {
+    setWlOffset({ dc: 0, dw: 0 });
+  }, [volume]);
+
   const [sliceIndex, setSliceIndex] = useState<Record<SlicePlane, number>>({
     axial: 0,
     sagittal: 0,
@@ -115,6 +133,60 @@ export default function PlanningCanvasPanel({
     return () => el.removeEventListener('wheel', handler);
   }, [volume, plane, maxSlices]);
 
+  // Right-click drag for window/level adjustment.
+  // Horizontal drag adjusts window width, vertical drag adjusts window center.
+  // This matches the standard DICOM viewer interaction pattern.
+  const wlDragRef = useRef<{ startX: number; startY: number; startDC: number; startDW: number } | null>(null);
+  const wlOffsetRef = useRef(wlOffset);
+  wlOffsetRef.current = wlOffset;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !volume) return;
+
+    const sensitivity = (volume.dataP98 - volume.dataP2) / 300;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 2) return;
+      e.preventDefault();
+      wlDragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startDC: wlOffsetRef.current.dc,
+        startDW: wlOffsetRef.current.dw,
+      };
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!wlDragRef.current) return;
+      e.preventDefault();
+      const dx = e.clientX - wlDragRef.current.startX;
+      const dy = e.clientY - wlDragRef.current.startY;
+      setWlOffset({
+        dw: wlDragRef.current.startDW + dx * sensitivity,
+        dc: wlDragRef.current.startDC - dy * sensitivity,
+      });
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button === 2) wlDragRef.current = null;
+    };
+
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    el.addEventListener('mousedown', onMouseDown);
+    el.addEventListener('contextmenu', onContextMenu);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      el.removeEventListener('mousedown', onMouseDown);
+      el.removeEventListener('contextmenu', onContextMenu);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [volume]);
+
   // Determine image source: volume slice > uploaded image > localizer fallback
   const imageSrc: string | ImageBitmap =
     volumeSliceBitmap ?? planner.getImageSource(viewId);
@@ -141,6 +213,8 @@ export default function PlanningCanvasPanel({
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [updateSize]);
+
+  const hasWlAdjustment = wlOffset.dc !== 0 || wlOffset.dw !== 0;
 
   return (
     <div
@@ -217,6 +291,44 @@ export default function PlanningCanvasPanel({
             {label}
           </span>
         ))}
+
+        {/* W/L indicator — shown when volume loaded */}
+        {volume && (
+          <div
+            className="absolute bottom-1 left-1.5 z-10 pointer-events-none select-none"
+            style={{
+              fontSize: 8,
+              fontFamily: 'var(--font-mono, monospace)',
+              color: 'rgba(255,255,255,0.55)',
+              textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+              lineHeight: 1.4,
+            }}
+          >
+            <div>W:{Math.round(windowWidth)}</div>
+            <div>L:{Math.round(windowCenter)}</div>
+          </div>
+        )}
+
+        {/* W/L reset button — only shown when user has manually adjusted */}
+        {hasWlAdjustment && (
+          <button
+            className="absolute top-[30px] right-1 z-10"
+            onClick={() => setWlOffset({ dc: 0, dw: 0 })}
+            title="Reset window/level"
+            style={{
+              fontSize: 7,
+              padding: '1px 4px',
+              background: 'rgba(0,0,0,0.5)',
+              color: 'rgba(255,255,255,0.6)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 3,
+              cursor: 'pointer',
+              lineHeight: 1.3,
+            }}
+          >
+            W/L
+          </button>
+        )}
       </div>
     </div>
   );

@@ -73,7 +73,43 @@ export async function loadNiftiVolume(url: string): Promise<VolumeData> {
     if (float32[i] > dataMax) dataMax = float32[i];
   }
 
-  const volume: VolumeData = { data: float32, dims, pixDims, dataMin, dataMax };
+  // Compute robust percentiles from non-zero voxels for proper MRI windowing.
+  // Using a histogram approach (256 bins) to avoid sorting the full volume.
+  const BINS = 4096;
+  const range = dataMax - dataMin;
+  const binWidth = range / BINS;
+  const histogram = new Uint32Array(BINS);
+  let nonZeroCount = 0;
+
+  for (let i = 0; i < float32.length; i++) {
+    const v = float32[i];
+    if (v > 0) {
+      const bin = Math.min(BINS - 1, Math.floor((v - dataMin) / binWidth));
+      histogram[bin]++;
+      nonZeroCount++;
+    }
+  }
+
+  let dataP2 = dataMin;
+  let dataP98 = dataMax;
+
+  if (nonZeroCount > 0) {
+    const p2Target = Math.floor(nonZeroCount * 0.02);
+    const p98Target = Math.floor(nonZeroCount * 0.98);
+    let cumulative = 0;
+    for (let b = 0; b < BINS; b++) {
+      cumulative += histogram[b];
+      if (cumulative >= p2Target && dataP2 === dataMin) {
+        dataP2 = dataMin + b * binWidth;
+      }
+      if (cumulative >= p98Target) {
+        dataP98 = dataMin + (b + 1) * binWidth;
+        break;
+      }
+    }
+  }
+
+  const volume: VolumeData = { data: float32, dims, pixDims, dataMin, dataMax, dataP2, dataP98 };
   cache.set(url, volume);
   return volume;
 }

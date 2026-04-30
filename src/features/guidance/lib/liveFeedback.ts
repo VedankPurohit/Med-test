@@ -4,6 +4,9 @@ import type {
   ProtocolTolerance,
 } from "@/features/planner/types/planner";
 
+/** Scale from normalized [-1,1] coordinates to mm — must match scoring.ts */
+const NORM_TO_MM = 250;
+
 export function computeLiveFeedback(
   box: PlannerBox,
   target: ProtocolTarget,
@@ -17,17 +20,17 @@ export function computeLiveFeedback(
 
   if (Math.abs(dx) > tolerances.center * 0.5) {
     hints.push(
-      `Move box ${Math.abs(dx * 100).toFixed(0)}mm ${dx > 0 ? "right" : "left"}`
+      `Move box ${Math.abs(dx * NORM_TO_MM).toFixed(0)}mm ${dx > 0 ? "right" : "left"}`
     );
   }
   if (Math.abs(dy) > tolerances.center * 0.5) {
     hints.push(
-      `Move box ${Math.abs(dy * 100).toFixed(0)}mm ${dy > 0 ? "anterior" : "posterior"}`
+      `Move box ${Math.abs(dy * NORM_TO_MM).toFixed(0)}mm ${dy > 0 ? "anterior" : "posterior"}`
     );
   }
   if (Math.abs(dz) > tolerances.center * 0.5) {
     hints.push(
-      `Move box ${Math.abs(dz * 100).toFixed(0)}mm ${dz > 0 ? "superior" : "inferior"}`
+      `Move box ${Math.abs(dz * NORM_TO_MM).toFixed(0)}mm ${dz > 0 ? "superior" : "inferior"}`
     );
   }
 

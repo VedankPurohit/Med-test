@@ -34,7 +34,10 @@ export const CASES: CaseConfig[] = [
       }
     ],
     protocols: BRAIN_PROTOCOLS,
-    volumeUrl: "/volumes/brain/mni152_t1_1mm.nii.gz"
+    // Real single-patient T1 (Chris Rorden / niivue-images, CC BY-NC 4.0).
+    // Replaces the MNI152 averaged atlas template, which looked synthetic due to
+    // population averaging blurring out individual anatomical variation.
+    volumeUrl: "/volumes/brain/brain_t1.nii.gz"
   },
   {
     id: "cspine",

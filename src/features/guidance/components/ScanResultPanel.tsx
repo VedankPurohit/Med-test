@@ -2,8 +2,26 @@
 
 import { useMemo, useEffect, useState, useRef } from "react";
 import type { VolumeData } from "@/features/volume/types/volume";
+import type { SlicePlane } from "@/features/volume/types/volume";
 import type { PlannerBox } from "@/features/planner/types/planner";
 import { simulateScanResult } from "@/features/volume/lib/scanSimulator";
+
+/** Derive the scan orientation from a protocol label.
+ *  All protocol labels consistently contain "Axial", "Sagittal", or "Coronal". */
+function inferScanPlane(label: string): SlicePlane {
+  const lower = label.toLowerCase();
+  if (/\bsag/i.test(lower)) return "sagittal";
+  if (/\bcor/i.test(lower)) return "coronal";
+  // Default to axial for axial protocols and anything unrecognized
+  return "axial";
+}
+
+/** Readable label for the scan plane */
+const PLANE_LABELS: Record<SlicePlane, string> = {
+  axial: "Axial",
+  sagittal: "Sagittal",
+  coronal: "Coronal",
+};
 
 interface ScanResultPanelProps {
   open: boolean;
@@ -22,13 +40,15 @@ export function ScanResultPanel({
 }: ScanResultPanelProps) {
   const [bitmaps, setBitmaps] = useState<ImageBitmap[]>([]);
 
+  const scanPlane = inferScanPlane(protocolLabel);
+
   const sliceResults = useMemo(() => {
     if (!volume || !box) return [];
-    // Auto window from volume data range
-    const wc = (volume.dataMin + volume.dataMax) / 2;
-    const ww = (volume.dataMax - volume.dataMin) * 0.85;
-    return simulateScanResult(volume, box, "axial", wc, ww);
-  }, [volume, box]);
+    // Percentile-based window/level for correct MRI contrast
+    const wc = (volume.dataP2 + volume.dataP98) / 2;
+    const ww = (volume.dataP98 - volume.dataP2) * 1.1;
+    return simulateScanResult(volume, box, scanPlane, wc, ww);
+  }, [volume, box, scanPlane]);
 
   // Convert SliceResults to ImageBitmaps
   useEffect(() => {
@@ -103,7 +123,7 @@ export function ScanResultPanel({
           }}
         >
           {bitmaps.length > 0
-            ? `${bitmaps.length} slices generated from planned volume position`
+            ? `${bitmaps.length} ${PLANE_LABELS[scanPlane].toLowerCase()} slices generated from planned volume position`
             : "No volume data available — scan result simulation requires a loaded NIfTI volume."}
         </div>
 

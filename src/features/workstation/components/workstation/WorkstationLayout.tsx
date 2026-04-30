@@ -284,13 +284,14 @@ export default function WorkstationLayout() {
     }
   }, [phase, setOrderConfirmed]);
 
-  // Auto-skip ordering panel when there's 0 or 1 protocol
+  // Sequence-ordering step is currently disabled — auto-confirm and advance to survey
+  // for any number of protocols. (Re-enable by restoring the addedProtocols.length <= 1 guard.)
   useEffect(() => {
-    if (phase === 'protocols-confirmed' && addedProtocols.length <= 1 && !orderConfirmed) {
+    if (phase === 'protocols-confirmed' && !orderConfirmed) {
       setOrderConfirmed(true);
       startSurvey();
     }
-  }, [phase, addedProtocols.length, orderConfirmed, setOrderConfirmed, startSurvey]);
+  }, [phase, orderConfirmed, setOrderConfirmed, startSurvey]);
 
   const showCanvasPanels = bridge.isActive;
   const showBlackPanels = (phase === 'survey-complete' || phase === 'protocol-active') && !showCanvasPanels;

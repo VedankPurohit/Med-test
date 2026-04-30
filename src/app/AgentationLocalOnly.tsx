@@ -19,9 +19,17 @@ export default function AgentationLocalOnly() {
       return;
     }
     const params = new URLSearchParams(window.location.search);
-    const enabledByQuery = params.get("agentation") === "1";
+    const queryValue = params.get("agentation");
+    const enabledByQuery = queryValue === "1";
+    const disabledByQuery = queryValue === "0";
+    // Persist the query param so it survives reloads.
+    if (enabledByQuery) {
+      window.localStorage.setItem("agentation.enabled", "1");
+    } else if (disabledByQuery) {
+      window.localStorage.setItem("agentation.enabled", "0");
+    }
     const enabledByStorage = window.localStorage.getItem("agentation.enabled") === "1";
-    setEnabled(enabledByQuery || enabledByStorage);
+    setEnabled(enabledByQuery || (enabledByStorage && !disabledByQuery));
   }, []);
 
   if (!enabled) {
