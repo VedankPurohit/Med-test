@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { TeachingRenderProps } from '@/features/guidance/types/guidance';
+import { formatParameterValue, getParameterOptions } from '@/features/guidance/lib/parameterDisplay';
 
 function PopupTeachingRender({ protocol, params, onParamChange, onAccept, onSkip }: TeachingRenderProps) {
   const highlights = protocol.teaching?.parameterHighlights ?? [];
@@ -22,6 +23,7 @@ function PopupTeachingRender({ protocol, params, onParamChange, onAccept, onSkip
   const spec = protocol.parameterSpecs.find((s) => s.key === current.key);
   const targetValue = protocol.target.params[current.key] ?? 0;
   const currentValue = params[current.key] ?? targetValue;
+  const options = getParameterOptions(current.key);
 
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === highlights.length - 1;
@@ -104,7 +106,7 @@ function PopupTeachingRender({ protocol, params, onParamChange, onAccept, onSkip
                 color: 'var(--accent-blue)',
               }}
             >
-              Target: {targetValue}{spec?.unit ? ` ${spec.unit}` : ''}
+              Target: {formatParameterValue(current.key, targetValue, spec)}
             </span>
           </div>
 
@@ -122,21 +124,41 @@ function PopupTeachingRender({ protocol, params, onParamChange, onAccept, onSkip
             >
               Value
             </label>
-            <input
-              type="number"
-              value={currentValue}
-              min={spec?.min}
-              max={spec?.max}
-              step={spec?.step ?? 1}
-              onChange={(e) => onParamChange(current.key, Number(e.target.value))}
-              className="w-[100px] px-2 py-1 rounded text-[11px]"
-              style={{
-                background: 'var(--chrome-surface)',
-                border: '1px solid var(--chrome-border)',
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-mono, monospace)',
-              }}
-            />
+            {options ? (
+              <select
+                value={currentValue}
+                onChange={(e) => onParamChange(current.key, Number(e.target.value))}
+                className="w-[140px] px-2 py-1 rounded text-[11px]"
+                style={{
+                  background: 'var(--chrome-surface)',
+                  border: '1px solid var(--chrome-border)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                }}
+              >
+                {options.map((option) => (
+                  <option key={option.label} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="number"
+                value={currentValue}
+                min={spec?.min}
+                max={spec?.max}
+                step={spec?.step ?? 1}
+                onChange={(e) => onParamChange(current.key, Number(e.target.value))}
+                className="w-[100px] px-2 py-1 rounded text-[11px]"
+                style={{
+                  background: 'var(--chrome-surface)',
+                  border: '1px solid var(--chrome-border)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                }}
+              />
+            )}
             {spec?.unit && (
               <span
                 className="text-[9px]"

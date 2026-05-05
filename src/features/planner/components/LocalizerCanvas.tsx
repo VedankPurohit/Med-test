@@ -2,9 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { getFlatGeometry, getProjectedGeometry, inPlaneAngle, normToScreen, pointerToNorm, squaredDistance } from "@/features/planner/lib/geometry";
+import {
+  getFlatGeometry,
+  getProjectedGeometry,
+  getSlicePlaneCube3D,
+  getSlicePlaneFlat2D,
+  getSliceSlabs,
+  NORM_TO_MM,
+  normToScreen,
+  pointerToNorm,
+  squaredDistance
+} from "@/features/planner/lib/geometry";
 import { loadImage } from "@/features/planner/lib/media";
-import { BoxRenderMode, HandleId, PlannerBox, Point2, ViewId } from "@/features/planner/types/planner";
+import { BoxRenderMode, HandleId, PlannerBox, Point2, Vector3, ViewId } from "@/features/planner/types/planner";
 
 type LocalizerCanvasProps = {
   viewId: ViewId;
@@ -21,6 +31,14 @@ type LocalizerCanvasProps = {
   onHitTest?: (viewId: ViewId, point: Point2, mode: BoxRenderMode) => HandleId | null;
   width?: number;
   height?: number;
+  /** Box-local axis along which slices stack (x/y/z). Pass null to hide slice lines. */
+  sliceAxis?: keyof Vector3 | null;
+  /** Number of slices in the protocol. Pass null/0 to hide slice lines. */
+  sliceCount?: number | null;
+  /** Slice thickness in mm (controls visual slab width vs gap). */
+  sliceThicknessMm?: number | null;
+  /** Slice gap in mm (controls visual gap between slabs). */
+  sliceGapMm?: number | null;
 };
 
 const DEFAULT_CANVAS_SIZE = 320;
@@ -39,7 +57,11 @@ export const LocalizerCanvas = ({
   onEndDrag,
   onHitTest,
   width: widthProp,
-  height: heightProp
+  height: heightProp,
+  sliceAxis = null,
+  sliceCount = null,
+  sliceThicknessMm = null,
+  sliceGapMm = null
 }: LocalizerCanvasProps) => {
   const canvasWidth = widthProp ?? DEFAULT_CANVAS_SIZE;
   const canvasHeight = heightProp ?? DEFAULT_CANVAS_SIZE;
@@ -117,7 +139,7 @@ export const LocalizerCanvas = ({
     drawGrid(ctx, canvasWidth, canvasHeight);
 
     if (showTarget && targetBox) {
-      drawOutlineForMode(ctx, targetBox, viewId, boxRenderMode, {
+      drawOutlineForMode(ctx, targetBox, viewId, boxRenderMode, editable, {
         color: "#f4df9d",
         lineWidth: 1.5,
         dashed: true,
@@ -129,7 +151,7 @@ export const LocalizerCanvas = ({
       // Draw volume boundary (unrotated extent) before the rotated box
       drawVolumeBoundary(ctx, box, viewId, editable ? "#57fff1" : "#c4a44d", canvasWidth, canvasHeight);
 
-      drawOutlineForMode(ctx, box, viewId, boxRenderMode, {
+      drawOutlineForMode(ctx, box, viewId, boxRenderMode, editable, {
         color: editable ? "#57fff1" : "#c4a44d",
         lineWidth: editable ? 3.5 : 2,
         dashed: false,
@@ -137,8 +159,41 @@ export const LocalizerCanvas = ({
         glow: editable,
       }, canvasWidth, canvasHeight);
 
+      // Slice line stack — drawn between the box outline and the interaction
+      // handles so the lines feel like part of the volume. Skipped when the
+      // protocol's slice axis is the view's out-of-plane axis (the box would
+      // represent a single slice's footprint, so there are no lines to show).
+      if (sliceAxis && sliceCount && sliceCount > 0) {
+        drawSliceLines(
+          ctx,
+          box,
+          viewId,
+          boxRenderMode,
+          editable,
+          {
+            sliceAxis,
+            sliceCount,
+            thicknessMm: sliceThicknessMm ?? 0,
+            gapMm: sliceGapMm ?? 0,
+            color: editable ? "#9efff3" : "#d4be8d",
+            alpha: 0.55,
+            lineWidth: 1
+          },
+          canvasWidth,
+          canvasHeight
+        );
+      }
+
+      // Both render modes expose only move + rotate gestures by design. Box
+      // size is parameter-driven (Slices, SliceThickness, SliceGap on the
+      // slice axis; FOV in-plane) and is updated through the
+      // DynamicParameterPanel inputs — there are intentionally no corner /
+      // edge resize handles to grab.
       if (editable && boxRenderMode === "flat2d") {
         drawHandles(ctx, box, viewId, hoveredHandle, canvasWidth, canvasHeight);
+      }
+      if (editable && boxRenderMode === "cube3d") {
+        drawCubeRotationRing(ctx, box, viewId, hoveredHandle, canvasWidth, canvasHeight);
       }
     }
 
@@ -146,7 +201,22 @@ export const LocalizerCanvas = ({
     ctx.font = "bold 9px sans-serif";
     ctx.fillStyle = editable ? "rgba(87,255,241,0.55)" : "rgba(196,164,77,0.5)";
     ctx.fillText(editable ? "EDITABLE" : "DERIVED", 8, 16);
-  }, [box, boxRenderMode, canvasWidth, canvasHeight, editable, hoveredHandle, image, showTarget, targetBox, viewId]);
+  }, [
+    box,
+    boxRenderMode,
+    canvasWidth,
+    canvasHeight,
+    editable,
+    hoveredHandle,
+    image,
+    showTarget,
+    targetBox,
+    viewId,
+    sliceAxis,
+    sliceCount,
+    sliceThicknessMm,
+    sliceGapMm
+  ]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!editable || !canvasRef.current) {
@@ -408,20 +478,192 @@ const drawVolumeBoundary = (
   ctx.restore();
 };
 
+/**
+ * Render the projected convex hull as a single closed 2D polygon.
+ *
+ * Kept for the cube3d path (where it complements the 12-edge cube wireframe
+ * in `drawProjectedOutline`). In flat2d mode the derived view used to fall
+ * back to this routine so it would react to rx/rz rotations — but the
+ * resulting 5–6 sided silhouette read visually as a 3D cube, defeating
+ * flat2d's "clean rectangle" contract. Derived flat2d views now use
+ * `drawFlatOutline` for visual consistency with the editable views; the
+ * trade-off is that the derived rectangle only tilts with its own
+ * in-plane angle (which mirrors how editable flat2d views behave).
+ */
+const drawHullOutline = (
+  ctx: CanvasRenderingContext2D,
+  box: PlannerBox,
+  viewId: ViewId,
+  style: OutlineStyle,
+  w: number,
+  h: number
+) => {
+  const geometry = getProjectedGeometry(box, viewId);
+  const hull = geometry.hull.map((point) => normToScreen(point, w, h));
+
+  if (hull.length < 3) {
+    return;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = style.alpha;
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = style.lineWidth;
+  if (style.dashed) {
+    ctx.setLineDash([7, 5]);
+  }
+  if (style.glow) {
+    ctx.shadowColor = style.color;
+    ctx.shadowBlur = 6;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(hull[0].x, hull[0].y);
+  for (let index = 1; index < hull.length; index += 1) {
+    ctx.lineTo(hull[index].x, hull[index].y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Crosshair at projected box center, matching the other modes' look.
+  ctx.setLineDash([]);
+  const center = normToScreen(geometry.center2D, w, h);
+  const arm = 10;
+  ctx.beginPath();
+  ctx.moveTo(center.x - arm, center.y);
+  ctx.lineTo(center.x + arm, center.y);
+  ctx.moveTo(center.x, center.y - arm);
+  ctx.lineTo(center.x, center.y + arm);
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+};
+
 const drawOutlineForMode = (
   ctx: CanvasRenderingContext2D,
   box: PlannerBox,
   viewId: ViewId,
   mode: BoxRenderMode,
+  editable: boolean,
   style: OutlineStyle,
   w: number,
   h: number
 ) => {
   if (mode === "flat2d") {
+    // Both editable and derived views render a clean 4-corner rectangle
+    // via drawFlatOutline. The derived view used to fall through to
+    // drawHullOutline so it would visibly tilt with rx/rz, but the
+    // resulting 5–6 sided silhouette read as a 3D cube — defeating
+    // flat2d's "everything is a flat rectangle" contract. With this
+    // change, derived rectangles only respond to their own in-plane
+    // angle (matching how editable flat2d views behave). Switch to
+    // cube3d if you want full 3D-rotation visualization.
     drawFlatOutline(ctx, box, viewId, style, w, h);
     return;
   }
   drawProjectedOutline(ctx, box, viewId, style, w, h);
+};
+
+type SliceLineStyle = {
+  sliceAxis: keyof Vector3;
+  sliceCount: number;
+  thicknessMm: number;
+  gapMm: number;
+  color: string;
+  alpha: number;
+  lineWidth: number;
+};
+
+/**
+ * Draw the slice stack inside the planning box. Each slice is shown as a
+ * thin slab outline (front + back boundary planes), giving the user a
+ * visual count and a sense of thickness vs gap.
+ *
+ * Math reuses the same pipeline as the box outline:
+ *   - cube3d: rotate3D → translate → projectPoint → normToScreen
+ *   - flat2d: rotate2D (in-plane) → translate → normToScreen
+ *
+ * That means slabs tilt in lock-step with the box rotation in cube3d, and
+ * follow `inPlaneAngle` in flat2d.
+ *
+ * Visibility rule: slice lines are drawn only on *editable* views (the
+ * prescription views the user is steering); derived views render the
+ * outline alone, no slabs. When the slice axis is the editable view's
+ * out-of-plane axis and the box is unrotated, all N slabs collapse onto
+ * the same rectangle and visually look like the box outline — that's
+ * geometrically correct, not a bug.
+ */
+const drawSliceLines = (
+  ctx: CanvasRenderingContext2D,
+  box: PlannerBox,
+  viewId: ViewId,
+  mode: BoxRenderMode,
+  editable: boolean,
+  style: SliceLineStyle,
+  w: number,
+  h: number
+) => {
+  if (!editable) {
+    return;
+  }
+
+  if (box.size[style.sliceAxis] <= 0) {
+    return;
+  }
+
+  const slabs = getSliceSlabs(
+    style.sliceCount,
+    style.thicknessMm,
+    style.gapMm,
+    1 / NORM_TO_MM
+  );
+
+  // Mirror the outline's projection mode so slabs and outline obey the
+  // same contract:
+  //   - flat2d: in-plane angle only. Slabs become clean 2D segments
+  //     attached to the box outline; rotations from other views never
+  //     affect what's drawn here. When the slice axis is the view's
+  //     out-of-plane axis (e.g. sagittal-view + sagittal-protocol with
+  //     SliceOrientation = LR), getSlicePlaneFlat2D returns [] because
+  //     all N slabs project onto the same rectangle — geometrically
+  //     correct in flat2d. To see those slices distinctly, change
+  //     SliceOrientation to AP / HF, or switch to cube3d render mode.
+  //   - cube3d: full Rotation3 projection. Slabs tilt with the actual
+  //     3D orientation of the box, matching how the cube outline draws.
+  ctx.save();
+  ctx.globalAlpha = style.alpha;
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = style.lineWidth;
+
+  for (const slab of slabs) {
+    const positions = [slab.center - slab.halfWidth, slab.center + slab.halfWidth];
+    for (const planePos of positions) {
+      const corners = mode === "cube3d"
+        ? getSlicePlaneCube3D(box, viewId, style.sliceAxis, planePos)
+        : getSlicePlaneFlat2D(box, viewId, style.sliceAxis, planePos);
+
+      if (corners.length < 2) {
+        continue;
+      }
+
+      const screen = corners.map((point) => normToScreen(point, w, h));
+      ctx.beginPath();
+      ctx.moveTo(screen[0].x, screen[0].y);
+      for (let i = 1; i < screen.length; i += 1) {
+        ctx.lineTo(screen[i].x, screen[i].y);
+      }
+      // cube3d returns 4 corners (a quad) — close the loop. flat2d returns 2
+      // endpoints (a segment) — leave it open.
+      if (screen.length >= 3) {
+        ctx.closePath();
+      }
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
 };
 
 const drawBackground = (
@@ -491,96 +733,119 @@ const drawHandles = (
 
   ctx.save();
 
-  // Corner handles: circles (not squares)
-  for (let i = 0; i < 4; i++) {
-    const c = corners[i];
-    const isHovered = hoveredHandle?.kind === "corner" && hoveredHandle.index === i;
-    const radius = isHovered ? 8 : 6;
-
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = "#57fff1";
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.5;
-    ctx.fill();
-    ctx.stroke();
+  // Rotation ring + center pivot dot. Corner/edge resize handles are
+  // intentionally omitted — the canvas exposes only move + rotate gestures.
+  // Box size is parameter-driven (Slices, SliceThickness, SliceGap on the
+  // slice axis; FOV in-plane) and is updated via the DynamicParameterPanel
+  // inputs.
+  let maxDist = 0;
+  for (const c of corners) {
+    const d = Math.sqrt(squaredDistance(center2D, c));
+    if (d > maxDist) maxDist = d;
   }
+  const ringRadius = maxDist + 10;
+  const isRotateHovered = hoveredHandle?.kind === "rotate";
 
-  // Edge midpoint handles: circles
-  for (let i = 0; i < 4; i++) {
-    const a = corners[i];
-    const b = corners[(i + 1) % 4];
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    const isHovered = hoveredHandle?.kind === "edge" && hoveredHandle.index === i;
-    const radius = isHovered ? 6 : 5;
+  ctx.beginPath();
+  ctx.arc(center2D.x, center2D.y, ringRadius, 0, Math.PI * 2);
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = isRotateHovered ? "rgba(87, 255, 241, 0.5)" : "rgba(87, 255, 241, 0.2)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.setLineDash([]);
 
-    ctx.beginPath();
-    ctx.arc(mid.x, mid.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = "#57fff1";
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  // Rotation ring: always visible (brighter on hover)
-  {
-    let maxDist = 0;
-    for (const c of corners) {
-      const d = Math.sqrt(squaredDistance(center2D, c));
-      if (d > maxDist) maxDist = d;
-    }
-    const ringRadius = maxDist + 10;
-    const isHovered = hoveredHandle?.kind === "rotate";
-
-    ctx.beginPath();
-    ctx.arc(center2D.x, center2D.y, ringRadius, 0, Math.PI * 2);
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = isHovered ? "rgba(87, 255, 241, 0.5)" : "rgba(87, 255, 241, 0.2)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  // Yellow pivot dot at the box center — visual anchor for translation,
+  // matching the look real-world Philips/Siemens consoles use. The
+  // entire box interior already hits as `move`, so this is purely
+  // a visual cue (no new hit-test branch needed). Brightens on `move`
+  // hover so the user sees it's interactive.
+  const isMoveHovered = hoveredHandle?.kind === "move";
+  const pivotRadius = isMoveHovered ? 6 : 5;
+  ctx.beginPath();
+  ctx.arc(center2D.x, center2D.y, pivotRadius, 0, Math.PI * 2);
+  ctx.fillStyle = isMoveHovered ? "#ffe066" : "#f4c542";
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.stroke();
 
   ctx.restore();
 };
 
-const RESIZE_CURSORS = [
-  "ns-resize",     // 0: up
-  "nesw-resize",   // 1: up-right
-  "ew-resize",     // 2: right
-  "nwse-resize",   // 3: down-right
-  "ns-resize",     // 4: down
-  "nesw-resize",   // 5: down-left
-  "ew-resize",     // 6: left
-  "nwse-resize"    // 7: up-left
-] as const;
+/**
+ * Cube3d rotation ring.
+ *
+ * Drawn around the projected hull (the cube wireframe's silhouette). Visible
+ * thickness exactly matches hitTestCube's hit zone so the user grabs where they
+ * see. Brightens on hover.
+ *
+ * Offsets here are in normalized-space units (the same space hitTestCube uses).
+ * Conversion to canvas pixels: 1 norm unit ≈ canvasWidth / 2 pixels. We compute
+ * everything in pixels for drawing convenience, but the *normalized* offsets are
+ * the source of truth — keep CUBE_RING_OFFSET_INNER/OUTER in sync with
+ * geometry.ts hitTestCube.
+ */
+const CUBE_RING_OFFSET_INNER = 0.01; // norm
+const CUBE_RING_OFFSET_OUTER = 0.20; // norm
 
-const getResizeCursor = (edgeOrCornerIndex: number, angle: number, isCorner: boolean): string => {
-  // Compute the base angle for this edge/corner
-  // Edges: 0=bottom, 1=right, 2=top, 3=left (in normal screen coords where y-down)
-  // Corners: 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
-  let baseAngle: number;
-  if (isCorner) {
-    // Corners at 45deg offsets: index 0 -> 225deg, 1 -> 315deg, 2 -> 45deg, 3 -> 135deg
-    baseAngle = [225, 315, 45, 135][edgeOrCornerIndex] ?? 0;
-  } else {
-    // Edges: index 0 -> bottom (270deg normal), 1 -> right (0deg normal), 2 -> top (90deg), 3 -> left (180deg)
-    baseAngle = [270, 0, 90, 180][edgeOrCornerIndex] ?? 0;
+const drawCubeRotationRing = (
+  ctx: CanvasRenderingContext2D,
+  box: PlannerBox,
+  viewId: ViewId,
+  hoveredHandle: HandleId | null,
+  w: number,
+  h: number
+) => {
+  const geometry = getProjectedGeometry(box, viewId);
+  const center2D = normToScreen(geometry.center2D, w, h);
+  const hullScreen = geometry.hull.map((p) => normToScreen(p, w, h));
+
+  let maxDistPx = 0;
+  for (const c of hullScreen) {
+    const d = Math.sqrt(squaredDistance(center2D, c));
+    if (d > maxDistPx) maxDistPx = d;
   }
 
-  // Add the box rotation (convert radians to degrees, negate because screen-y is inverted)
-  const totalAngle = (baseAngle - (angle * 180) / Math.PI + 360) % 360;
+  // Convert normalized offsets to pixels using the same scale normToScreen uses.
+  // Smaller axis governs the conversion to stay conservative on non-square canvases.
+  const pxPerNormUnit = Math.min(w, h) / 2;
+  const innerPx = maxDistPx + CUBE_RING_OFFSET_INNER * pxPerNormUnit;
+  const outerPx = maxDistPx + CUBE_RING_OFFSET_OUTER * pxPerNormUnit;
+  const ringMidPx = (innerPx + outerPx) / 2;
+  const ringThicknessPx = Math.max(1, outerPx - innerPx);
 
-  // Quantize to nearest 45deg sector
-  const sector = Math.round(totalAngle / 45) % 8;
-  return RESIZE_CURSORS[sector];
+  const isHovered = hoveredHandle?.kind === "rotate";
+
+  ctx.save();
+  // Filled translucent annulus so the user clearly sees the grab zone.
+  ctx.beginPath();
+  ctx.arc(center2D.x, center2D.y, outerPx, 0, Math.PI * 2);
+  ctx.arc(center2D.x, center2D.y, innerPx, 0, Math.PI * 2, true);
+  ctx.fillStyle = isHovered
+    ? "rgba(87, 255, 241, 0.18)"
+    : "rgba(87, 255, 241, 0.08)";
+  ctx.fill("evenodd");
+
+  // Dashed midline for crisp visual reference.
+  ctx.beginPath();
+  ctx.arc(center2D.x, center2D.y, ringMidPx, 0, Math.PI * 2);
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = isHovered
+    ? "rgba(87, 255, 241, 0.85)"
+    : "rgba(87, 255, 241, 0.45)";
+  ctx.lineWidth = isHovered ? 2 : 1.25;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Suppress unused-var warning if ringThicknessPx isn't consumed below.
+  void ringThicknessPx;
 };
 
 const getCursorForHandle = (
   handle: HandleId | null,
-  box: PlannerBox | null,
-  viewId: ViewId,
+  _box: PlannerBox | null,
+  _viewId: ViewId,
   isDragging: boolean
 ): string => {
   if (!handle) return "default";
@@ -593,15 +858,7 @@ const getCursorForHandle = (
     return "crosshair";
   }
 
-  const angle = box ? inPlaneAngle(box, viewId) : 0;
-
-  if (handle.kind === "edge") {
-    return getResizeCursor(handle.index, angle, false);
-  }
-
-  if (handle.kind === "corner") {
-    return getResizeCursor(handle.index, angle, true);
-  }
-
+  // Corner / edge hits are ignored now that resize-via-UI is disabled — the
+  // user resizes the box via parameter inputs (Slices, SliceThickness, FOV).
   return "default";
 };

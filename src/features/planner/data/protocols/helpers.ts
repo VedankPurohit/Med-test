@@ -14,7 +14,10 @@ export const DEFAULT_PARAMETER_SPECS: ProtocolParameterSpec[] = [
   { key: "FOV", label: "FOV", unit: "mm", min: 0, step: 1, weight: 1 },
   { key: "Slices", label: "Slices", min: 1, step: 1, integer: true, weight: 1 },
   { key: "SliceThickness", label: "Slice Thickness", unit: "mm", min: 0, step: 0.1, weight: 1 },
-  { key: "SliceGap", label: "Slice Gap", unit: "mm", min: 0, step: 0.1, weight: 1 }
+  { key: "SliceGap", label: "Slice Gap", unit: "mm", min: 0, step: 0.1, weight: 1 },
+  // Slice orientation: 0=LR (x), 1=AP (y), 2=HF (z). weight 0 keeps it out
+  // of scoring (orientation is a structural choice, not a graded value).
+  { key: "SliceOrientation", label: "Slice Orientation", min: 0, max: 2, step: 1, integer: true, weight: 0 }
 ];
 
 export const EXTENDED_PARAMETER_SPECS: ProtocolParameterSpec[] = [
@@ -26,8 +29,7 @@ export const EXTENDED_PARAMETER_SPECS: ProtocolParameterSpec[] = [
   { key: "Bandwidth", label: "Bandwidth", unit: "Hz/px", min: 50, max: 2500, step: 10, weight: 0.3 },
   { key: "ETL", label: "ETL", min: 1, max: 256, step: 1, integer: true, weight: 0.3 },
   { key: "PhaseEncDir", label: "Phase Enc Dir", min: 0, max: 5, step: 1, integer: true, weight: 0.2 },
-  { key: "FatSuppression", label: "Fat Suppression", min: 0, max: 4, step: 1, integer: true, weight: 0.3 },
-  { key: "ScanTime", label: "Scan Time", unit: "s", min: 0, step: 1, weight: 0 }
+  { key: "FatSuppression", label: "Fat Suppression", min: 0, max: 4, step: 1, integer: true, weight: 0.3 }
 ];
 
 /** TI parameter spec for inversion-recovery sequences (FLAIR, STIR) */
@@ -58,9 +60,22 @@ export const makeFullParams = (
 ): PlannerParams => ({
   TR, TE, FOV, Slices, SliceThickness, SliceGap,
   FlipAngle, MatrixFreq, MatrixPhase, NEX, Bandwidth, ETL,
-  PhaseEncDir, FatSuppression,
-  ScanTime: computeScanTime({ TR, MatrixPhase, NEX, ETL } as PlannerParams)
+  PhaseEncDir, FatSuppression
 });
+
+export const pickParams = (
+  params: PlannerParams,
+  specs: ProtocolParameterSpec[]
+): PlannerParams => {
+  const selected: PlannerParams = {};
+  for (const spec of specs) {
+    const key = String(spec.key);
+    if (params[key] !== undefined) {
+      selected[key] = params[key];
+    }
+  }
+  return selected;
+};
 
 /** Compute scan time in seconds: (TR * PhaseSteps * NEX) / (ETL * 1000) */
 export const computeScanTime = (params: PlannerParams): number => {

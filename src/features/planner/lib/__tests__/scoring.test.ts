@@ -150,6 +150,53 @@ describe("scoring core", () => {
     expect(score.findings!.some((f) => f.severity === "error")).toBe(true);
   });
 
+  it("flags physically impossible timing parameters", () => {
+    const box: PlannerBox = {
+      center: deepClone(protocol.target.center),
+      size: deepClone(protocol.target.size),
+      rotation: deepClone(protocol.target.rotation)
+    };
+
+    const impossibleParams = {
+      ...deepClone(protocol.target.params),
+      TR: 80,
+      TE: 120
+    };
+
+    const score = computeScore(protocol, box, impossibleParams, false, "brain");
+    expect(score.pass).toBe(false);
+    expect(score.findings?.some((finding) => finding.code === "timing_invalid_tr_te")).toBe(true);
+  });
+
+  it("flags inversion time that cannot fit inside TR", () => {
+    const irProtocol: ProtocolConfig = {
+      ...protocol,
+      target: {
+        ...protocol.target,
+        params: { ...protocol.target.params, TI: 2500 }
+      },
+      parameterSpecs: [
+        ...protocol.parameterSpecs,
+        { key: "TI", label: "TI", min: 0, step: 1, weight: 1 }
+      ]
+    };
+    const box: PlannerBox = {
+      center: deepClone(irProtocol.target.center),
+      size: deepClone(irProtocol.target.size),
+      rotation: deepClone(irProtocol.target.rotation)
+    };
+
+    const invalidParams = {
+      ...deepClone(irProtocol.target.params),
+      TR: 3000,
+      TI: 3200
+    };
+
+    const score = computeScore(irProtocol, box, invalidParams, false, "brain");
+    expect(score.pass).toBe(false);
+    expect(score.findings?.some((finding) => finding.code === "timing_invalid_ti")).toBe(true);
+  });
+
   it("deep clones nested objects", () => {
     const cloned = deepClone(protocol.target);
     cloned.center.x = 999;

@@ -1,6 +1,7 @@
 'use client';
 
 import type { TeachingRenderProps } from '@/features/guidance/types/guidance';
+import { formatParameterValue, getParameterOptions } from '@/features/guidance/lib/parameterDisplay';
 
 function InlineTeachingRender({ protocol, params, onParamChange, onAccept, onSkip }: TeachingRenderProps) {
   const highlights = protocol.teaching?.parameterHighlights ?? [];
@@ -34,6 +35,7 @@ function InlineTeachingRender({ protocol, params, onParamChange, onAccept, onSki
             const spec = protocol.parameterSpecs.find((s) => s.key === h.key);
             const targetValue = protocol.target.params[h.key] ?? 0;
             const currentValue = params[h.key] ?? targetValue;
+            const options = getParameterOptions(h.key);
 
             return (
               <div
@@ -58,7 +60,7 @@ function InlineTeachingRender({ protocol, params, onParamChange, onAccept, onSki
                       color: 'var(--accent-blue)',
                     }}
                   >
-                    Target: {targetValue}{spec?.unit ? ` ${spec.unit}` : ''}
+                    Target: {formatParameterValue(h.key, targetValue, spec)}
                   </span>
                 </div>
                 <p
@@ -68,21 +70,41 @@ function InlineTeachingRender({ protocol, params, onParamChange, onAccept, onSki
                   {h.explanation}
                 </p>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={currentValue}
-                    min={spec?.min}
-                    max={spec?.max}
-                    step={spec?.step ?? 1}
-                    onChange={(e) => onParamChange(h.key, Number(e.target.value))}
-                    className="w-[90px] px-2 py-1 rounded text-[10px]"
-                    style={{
-                      background: 'var(--chrome-surface)',
-                      border: '1px solid var(--chrome-border)',
-                      color: 'var(--text-primary)',
-                      fontFamily: 'var(--font-mono, monospace)',
-                    }}
-                  />
+                  {options ? (
+                    <select
+                      value={currentValue}
+                      onChange={(e) => onParamChange(h.key, Number(e.target.value))}
+                      className="w-[130px] px-2 py-1 rounded text-[10px]"
+                      style={{
+                        background: 'var(--chrome-surface)',
+                        border: '1px solid var(--chrome-border)',
+                        color: 'var(--text-primary)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                      }}
+                    >
+                      {options.map((option) => (
+                        <option key={option.label} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      value={currentValue}
+                      min={spec?.min}
+                      max={spec?.max}
+                      step={spec?.step ?? 1}
+                      onChange={(e) => onParamChange(h.key, Number(e.target.value))}
+                      className="w-[90px] px-2 py-1 rounded text-[10px]"
+                      style={{
+                        background: 'var(--chrome-surface)',
+                        border: '1px solid var(--chrome-border)',
+                        color: 'var(--text-primary)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                      }}
+                    />
+                  )}
                   {spec?.unit && (
                     <span
                       className="text-[9px]"

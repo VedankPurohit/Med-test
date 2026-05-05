@@ -13,3 +13,4 @@ pnpm-debug.log*
 *.tsbuildinfo
 test-results/
 test-screenshots/
+.gstack/

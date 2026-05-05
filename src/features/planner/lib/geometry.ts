@@ -1,4 +1,12 @@
-import { HandleId, PlannerBox, Point2, Rotation3, Vector3, ViewId } from "@/features/planner/types/planner";
+import {
+  HandleId,
+  ParameterSet,
+  PlannerBox,
+  Point2,
+  Rotation3,
+  Vector3,
+  ViewId
+} from "@/features/planner/types/planner";
 
 export const VIEW_CONFIG: Record<
   ViewId,
@@ -11,6 +19,13 @@ export const VIEW_CONFIG: Record<
 
 export const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
+
+/**
+ * Conversion between normalized box-space coordinates and millimeters.
+ * 1 normalized unit = 250 mm. Shared by sizing, scoring, coverage, and
+ * slab geometry so they never drift out of sync.
+ */
+export const NORM_TO_MM = 250;
 
 export const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
 
@@ -161,6 +176,209 @@ export const getProjectedGeometry = (box: PlannerBox, viewId: ViewId) => {
   return { projected, hull, center2D };
 };
 
+/**
+ * Determine the box-local slice-stack axis for a protocol.
+ *
+ * Sagittal protocols stack slices along x (L/R), coronal along y (A/P),
+ * axial / transverse along z (S/I).
+ *
+ * Resolution order:
+ *   1. If `params.SliceOrientation` is set (0 = LR/x, 1 = AP/y, 2 = HF/z),
+ *      use it. This is the user-configurable override exposed in the UI.
+ *   2. Otherwise infer from the protocol id substring ("sag" → x,
+ *      "cor" → y, else z). Works for both planner-native ids
+ *      ("brain_t1_sagittal", "brain_t2_axial", "cspine_sag_t2") and
+ *      workstation card ids that share the same tokens.
+ */
+export const SLICE_ORIENTATION_TO_AXIS: Record<number, keyof Vector3> = {
+  0: "x", // LR
+  1: "y", // AP
+  2: "z"  // HF
+};
+
+const AXIS_TO_SLICE_ORIENTATION: Record<keyof Vector3, number> = {
+  x: 0,
+  y: 1,
+  z: 2
+};
+
+export const axisToSliceOrientationCode = (axis: keyof Vector3): number =>
+  AXIS_TO_SLICE_ORIENTATION[axis];
+
+export const getSliceAxis = (
+  protocolId: string | null,
+  params?: ParameterSet
+): keyof Vector3 => {
+  // 1. Explicit user override wins.
+  if (params && params.SliceOrientation !== undefined) {
+    const code = Math.round(Number(params.SliceOrientation));
+    const axis = SLICE_ORIENTATION_TO_AXIS[code];
+    if (axis) {
+      return axis;
+    }
+  }
+  // 2. Fall back to protocol-id heuristic.
+  if (!protocolId) {
+    return "z";
+  }
+  const id = protocolId.toLowerCase();
+  if (id.includes("sag")) {
+    return "x";
+  }
+  if (id.includes("cor")) {
+    return "y";
+  }
+  return "z";
+};
+
+/**
+ * Map from view to the axis that gets *projected away* (out-of-plane).
+ * If a protocol's slice axis matches this for a given view, the box
+ * represents one slice's footprint — we render no slice lines.
+ */
+export const VIEW_OUT_OF_PLANE_AXIS: Record<ViewId, keyof Vector3> = {
+  axial: "z",
+  sagittal: "x",
+  coronal: "y"
+};
+
+/**
+ * Compute slice slab positions along the slice axis, in box-local
+ * normalized coordinates centered on 0. Each entry has the slab's
+ * center and half-width (so the visible slab spans
+ * [center - halfWidth, center + halfWidth]).
+ *
+ * Slabs are drawn in *absolute* mm: each slab is exactly `thicknessMm`
+ * thick and centers are spaced by `(thicknessMm + gapMm)`. The total
+ * span equals `N * thicknessMm + (N - 1) * gapMm` mm, which by
+ * construction matches the slice-axis size of the box (DynamicParameterPanel
+ * sizes the box from the same parameters via the same NORM_TO_MM scale),
+ * so slabs naturally fill the box edge-to-edge with the prescribed gaps.
+ *
+ * `mmToNorm` is the conversion from mm to normalized box-space (i.e.
+ * `1 / NORM_TO_MM`). Passed explicitly so tests can inject any scale.
+ */
+export const getSliceSlabs = (
+  slices: number,
+  thicknessMm: number,
+  gapMm: number,
+  mmToNorm: number
+): Array<{ center: number; halfWidth: number }> => {
+  const N = Math.max(1, Math.round(slices));
+  const T = Math.max(0, thicknessMm) * mmToNorm;
+  const G = Math.max(0, gapMm) * mmToNorm;
+  const totalSpan = N * T + (N - 1) * G;
+  const start = -totalSpan / 2 + T / 2;
+  const halfWidth = T / 2;
+  return Array.from({ length: N }, (_, i) => ({
+    center: start + i * (T + G),
+    halfWidth
+  }));
+};
+
+/**
+ * Given a slice axis and box-local half-extents, return the 4 corners
+ * of one slice plane (a rectangle perpendicular to the slice axis at
+ * `centerAlongAxis`) in box-local 3D coordinates. Caller rotates +
+ * translates + projects through the same pipeline as the cube corners.
+ */
+export const getSlicePlaneCorners = (
+  sliceAxis: keyof Vector3,
+  centerAlongAxis: number,
+  hx: number,
+  hy: number,
+  hz: number
+): Vector3[] => {
+  if (sliceAxis === "x") {
+    return [
+      { x: centerAlongAxis, y: -hy, z: -hz },
+      { x: centerAlongAxis, y: hy, z: -hz },
+      { x: centerAlongAxis, y: hy, z: hz },
+      { x: centerAlongAxis, y: -hy, z: hz }
+    ];
+  }
+  if (sliceAxis === "y") {
+    return [
+      { x: -hx, y: centerAlongAxis, z: -hz },
+      { x: hx, y: centerAlongAxis, z: -hz },
+      { x: hx, y: centerAlongAxis, z: hz },
+      { x: -hx, y: centerAlongAxis, z: hz }
+    ];
+  }
+  return [
+    { x: -hx, y: -hy, z: centerAlongAxis },
+    { x: hx, y: -hy, z: centerAlongAxis },
+    { x: hx, y: hy, z: centerAlongAxis },
+    { x: -hx, y: hy, z: centerAlongAxis }
+  ];
+};
+
+/**
+ * Project one slice plane through the cube3d pipeline (rotate3D → translate
+ * → projectPoint). Returns 4 normalized 2D points. When the slice axis is
+ * the view's out-of-plane axis the projection collapses to a degenerate
+ * line; callers should filter via VIEW_OUT_OF_PLANE_AXIS first.
+ */
+export const getSlicePlaneCube3D = (
+  box: PlannerBox,
+  viewId: ViewId,
+  sliceAxis: keyof Vector3,
+  planePos: number
+): Point2[] => {
+  const hx = box.size.x / 2;
+  const hy = box.size.y / 2;
+  const hz = box.size.z / 2;
+  const corners3D = getSlicePlaneCorners(sliceAxis, planePos, hx, hy, hz);
+  return corners3D.map((corner) => {
+    const rotated = rotate3D(corner, box.rotation);
+    const translated: Vector3 = {
+      x: rotated.x + box.center.x,
+      y: rotated.y + box.center.y,
+      z: rotated.z + box.center.z
+    };
+    return projectPoint(translated, viewId);
+  });
+};
+
+/**
+ * Project one slice plane through the flat2d pipeline (in-plane 2D rotation
+ * around the projected box center). Returns the 2 endpoints of the slice
+ * line. Returns an empty array if the slice axis is the view's
+ * out-of-plane axis (caller should filter, but we double-check defensively).
+ */
+export const getSlicePlaneFlat2D = (
+  box: PlannerBox,
+  viewId: ViewId,
+  sliceAxis: keyof Vector3,
+  planePos: number
+): Point2[] => {
+  const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
+  const halfA = box.size[axisA] / 2;
+  const halfB = box.size[axisB] / 2;
+  const angle = inPlaneAngle(box, viewId);
+  const center2D = projectPoint(box.center, viewId);
+
+  let local: Point2[];
+  if (sliceAxis === axisA) {
+    local = [
+      { x: planePos, y: -halfB },
+      { x: planePos, y: halfB }
+    ];
+  } else if (sliceAxis === axisB) {
+    local = [
+      { x: -halfA, y: planePos },
+      { x: halfA, y: planePos }
+    ];
+  } else {
+    return [];
+  }
+
+  return local.map((point) => {
+    const rotated = rotate2D(point, angle);
+    return { x: rotated.x + center2D.x, y: rotated.y + center2D.y };
+  });
+};
+
 export const FLAT_VIEW_AXES: Record<ViewId, [keyof Vector3, keyof Vector3]> = {
   axial: ["x", "y"],
   sagittal: ["y", "z"],
@@ -305,7 +523,13 @@ export const hitTestCube = (
     return { kind: "move" };
   }
 
-  // Rotation ring check
+  // Rotation ring check.
+  //
+  // Hit zone intentionally generous (~30px wide on a 320px canvas) because in
+  // cube3d mode the ring is the only rotation affordance — there are no corner
+  // or edge handles (TODO(cube3d-resize)). Keep these offsets in sync with
+  // CUBE_RING_OFFSET_INNER / CUBE_RING_OFFSET_OUTER in LocalizerCanvas so the
+  // rendered ring exactly matches the hit zone.
   const dist = Math.sqrt(squaredDistance(point, center2D));
   let maxCornerDist = 0;
   for (const corner of geometry.hull) {
@@ -314,8 +538,8 @@ export const hitTestCube = (
       maxCornerDist = d;
     }
   }
-  const innerRadius = maxCornerDist + 0.02;
-  const outerRadius = maxCornerDist + 0.12;
+  const innerRadius = maxCornerDist + 0.01;
+  const outerRadius = maxCornerDist + 0.20;
   if (dist >= innerRadius && dist <= outerRadius) {
     return { kind: "rotate" };
   }

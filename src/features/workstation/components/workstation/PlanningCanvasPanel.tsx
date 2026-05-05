@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LocalizerCanvas } from '@/features/planner/components/LocalizerCanvas';
-import { VIEW_CONFIG } from '@/features/planner/lib/geometry';
+import { getSliceAxis, VIEW_CONFIG } from '@/features/planner/lib/geometry';
 import type { ViewId } from '@/features/planner/types/planner';
 import type { ViewType } from '@/features/workstation/types/mri';
 import { ORIENTATION_LABELS } from '@/features/workstation/types/mri';
@@ -40,6 +40,30 @@ const VIEW_TO_PLANE: Record<ViewType, SlicePlane> = {
   axial: 'axial',
 };
 
+/**
+ * Feature flag: real-time NIfTI volume slice rendering.
+ *
+ * When `true`, the workstation fetches a 3D NIfTI volume per case and
+ * reformats slices on the fly as the user scrolls / drags the planning box —
+ * a "DICOM viewer" style experience.
+ *
+ * When `false` (current default), the panels render the static PNG localizer
+ * images defined in `planner-config.ts` → `localizerSets[].views`. The volume
+ * loading code, slice extraction, scroll-to-navigate, and W/L controls all
+ * remain in place but become unreachable (every consumer is guarded by
+ * `if (!volume)` early-returns).
+ *
+ * Why this is currently OFF:
+ *   See `doc/VOLUME_RENDERING_DISCONNECT.md`. TL;DR — the implementation guide
+ *   only requires draggable boxes over reference images, not real-time
+ *   reformatting. The volume pipeline is a worthwhile future feature but adds
+ *   complexity (atlas vs real-patient datasets, orientation handling, slice
+ *   coordinate math) that we don't need for the current milestone.
+ *
+ * To re-enable: set this to `true`. No other changes needed.
+ */
+const USE_VOLUME_RENDERING = false;
+
 export default function PlanningCanvasPanel({
   view,
   bridge,
@@ -57,8 +81,13 @@ export default function PlanningCanvasPanel({
 
   const hasActiveProtocol = bridge.resolved !== null && planner.currentProtocol !== null;
 
-  // Volume integration
-  const volumeUrl = bridge.resolved?.caseConfig.volumeUrl ?? null;
+  // Volume integration — gated by USE_VOLUME_RENDERING (see flag declaration above).
+  // When the flag is false, volumeUrl stays null, useVolume returns null, and the
+  // imageSrc ternary further down falls through to planner.getImageSource(viewId),
+  // which serves the static PNG localizer for this view.
+  const volumeUrl = USE_VOLUME_RENDERING
+    ? (bridge.resolved?.caseConfig.volumeUrl ?? null)
+    : null;
   const { volume } = useVolume(volumeUrl);
   const plane = VIEW_TO_PLANE[view];
   const maxSlices = volume ? getSliceCount(volume, plane) : 0;
@@ -216,6 +245,22 @@ export default function PlanningCanvasPanel({
 
   const hasWlAdjustment = wlOffset.dc !== 0 || wlOffset.dw !== 0;
 
+  // Slice line geometry — derived from the resolved protocol id and the live
+  // parameter values. `getSliceAxis` first checks for an explicit
+  // `params.SliceOrientation` override (the LR/AP/HF dropdown the user can
+  // toggle) and falls back to parsing the protocol id ("sag"/"cor"/axial)
+  // when nothing is set. Works for both planner-native ids
+  // (brain_t1_sagittal) and workstation card ids (sagittal-t1-tse / cspine_sag_t2).
+  const sliceAxis = hasActiveProtocol
+    ? getSliceAxis(
+        bridge.resolved?.protocolConfig.id ?? planner.protocolId,
+        planner.params ?? undefined
+      )
+    : null;
+  const sliceCount = planner.params?.Slices ?? null;
+  const sliceThicknessMm = planner.params?.SliceThickness ?? null;
+  const sliceGapMm = planner.params?.SliceGap ?? null;
+
   return (
     <div
       className="relative flex-1 flex flex-col overflow-hidden animate-fade-in"
@@ -269,6 +314,10 @@ export default function PlanningCanvasPanel({
           onHitTest={planner.hitTest}
           width={size.width}
           height={size.height}
+          sliceAxis={sliceAxis}
+          sliceCount={sliceCount}
+          sliceThicknessMm={sliceThicknessMm}
+          sliceGapMm={sliceGapMm}
         />
 
         {/* Orientation labels overlay */}

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import type { ProtocolConfig, PlannerParams } from "@/features/planner/types/planner";
+import { formatParameterValue, getParameterOptions } from "@/features/guidance/lib/parameterDisplay";
 
 interface ParameterQuizPanelProps {
   open: boolean;
@@ -107,44 +108,80 @@ export function ParameterQuizPanel({
           {quizParams.map((key) => {
             const s = spec(key);
             const result = results?.find((r) => r.key === key);
+            const options = getParameterOptions(key);
             return (
               <div key={key}>
                 <div style={{ fontSize: 9, color: "var(--text-secondary)", marginBottom: 4, fontWeight: 500 }}>
                   {s?.label ?? key}
                   {s?.unit ? ` (${s.unit})` : ""}
                 </div>
-                <input
-                  type="number"
-                  placeholder="?"
-                  disabled={submitted}
-                  value={answers[key] ?? ""}
-                  onChange={(e) =>
-                    setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
-                  }
-                  className="param-input"
-                  style={{
-                    width: "100%",
-                    padding: "6px 10px",
-                    fontSize: 11,
-                    fontFamily: "inherit",
-                    background: "var(--input-bg)",
-                    border: `1.5px solid ${
-                      result
-                        ? result.correct
-                          ? "var(--fb-good)"
-                          : "var(--fb-bad)"
-                        : "var(--input-border)"
-                    }`,
-                    borderRadius: 5,
-                    color: "var(--text-primary)",
-                    outline: "none",
-                    transition: "border-color 0.15s ease",
-                  }}
-                />
+                {options ? (
+                  <select
+                    disabled={submitted}
+                    value={answers[key] ?? ""}
+                    onChange={(e) =>
+                      setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    className="param-input"
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      fontSize: 11,
+                      fontFamily: "inherit",
+                      background: "var(--input-bg)",
+                      border: `1.5px solid ${
+                        result
+                          ? result.correct
+                            ? "var(--fb-good)"
+                            : "var(--fb-bad)"
+                          : "var(--input-border)"
+                      }`,
+                      borderRadius: 5,
+                      color: "var(--text-primary)",
+                      outline: "none",
+                      transition: "border-color 0.15s ease",
+                    }}
+                  >
+                    <option value="">Select</option>
+                    {options.map((option) => (
+                      <option key={option.label} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    placeholder="?"
+                    disabled={submitted}
+                    value={answers[key] ?? ""}
+                    onChange={(e) =>
+                      setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    className="param-input"
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      fontSize: 11,
+                      fontFamily: "inherit",
+                      background: "var(--input-bg)",
+                      border: `1.5px solid ${
+                        result
+                          ? result.correct
+                            ? "var(--fb-good)"
+                            : "var(--fb-bad)"
+                          : "var(--input-border)"
+                      }`,
+                      borderRadius: 5,
+                      color: "var(--text-primary)",
+                      outline: "none",
+                      transition: "border-color 0.15s ease",
+                    }}
+                  />
+                )}
                 {result && !result.correct && (
                   <div style={{ fontSize: 8, color: "var(--fb-bad)", marginTop: 4, fontWeight: 500 }}>
-                    Correct: {result.target}
-                    {s?.unit ? ` ${s.unit}` : ""}
+                    Correct: {formatParameterValue(key, result.target, s)}
                   </div>
                 )}
                 {result && result.correct && (

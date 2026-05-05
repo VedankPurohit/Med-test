@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Open: `http://localhost:3012`
+Open: `http://localhost:47823`
 
 ## Architecture
 

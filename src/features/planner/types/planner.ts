@@ -33,6 +33,28 @@ export const PHASE_ENC_DIRECTIONS: PhaseEncDirection[] = ["AP", "PA", "RL", "LR"
 export type FatSuppressionMode = "None" | "CHESS" | "STIR" | "SPAIR" | "Dixon";
 export const FAT_SUPPRESSION_MODES: FatSuppressionMode[] = ["None", "CHESS", "STIR", "SPAIR", "Dixon"];
 
+/**
+ * Slice orientation — which world axis the slice stack runs along.
+ * Distinct from PhaseEncDir (an in-plane gradient direction); this drives
+ * the geometry of the box itself: the slice-axis dimension grows with
+ * Slices/Thickness/Gap, and the other two carry the FOV.
+ *
+ * Encoding (kept aligned with world axis order x → y → z):
+ *   0 = LR (Left-Right) → x
+ *   1 = AP (Anterior-Posterior, "front-back") → y
+ *   2 = HF (Head-Foot / Superior-Inferior) → z
+ */
+export type SliceOrientation = "LR" | "AP" | "HF";
+export const SLICE_ORIENTATIONS: SliceOrientation[] = ["LR", "AP", "HF"];
+
+/**
+ * Parameter specs that are *structural* / *opt-in*: their absence in
+ * `target.params` is meaningful (= "use the protocol-derived default")
+ * rather than a config error. Validators and bijection-style tests must
+ * ignore these when checking that every spec has a target value.
+ */
+export const STRUCTURAL_SPEC_KEYS = new Set<string>(["SliceOrientation"]);
+
 export type SequenceStatusId =
   | "not_planned"
   | "planning_started"

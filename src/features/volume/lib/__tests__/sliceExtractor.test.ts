@@ -17,6 +17,8 @@ function makeMockVolume(): VolumeData {
     pixDims: [1, 1, 1],
     dataMin: 0,
     dataMax: 63,
+    dataP2: 1,
+    dataP98: 62,
   };
 }
 

@@ -55,6 +55,9 @@ const finiteOr = (value: number | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const hasParam = (params: PlannerParams, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(params, key) && Number.isFinite(Number(params[key]));
+
 const normalizeComponentWeights = (protocol: ProtocolConfig): ProtocolComponentWeights => {
   const incoming = protocol.scoringProfile?.componentWeights;
   const weights: ProtocolComponentWeights = {
@@ -250,10 +253,33 @@ const buildFindings = (
   protocol: ProtocolConfig,
   score: SingleTargetScore,
   pass: boolean,
-  box?: PlannerBox
+  box?: PlannerBox,
+  params?: PlannerParams
 ): ScoreFinding[] => {
   const findings: ScoreFinding[] = [];
   const hint = protocol.teaching?.planningHint;
+
+  if (params && hasParam(params, "TR") && hasParam(params, "TE") && Number(params.TR) < Number(params.TE)) {
+    findings.push({
+      code: "timing_invalid_tr_te",
+      severity: "error",
+      title: "Invalid Timing",
+      message: "TE cannot be greater than TR for this sequence.",
+      suggestion: "Increase TR or reduce TE so the echo occurs within the repetition time.",
+      relatedParameter: "TE"
+    });
+  }
+
+  if (params && hasParam(params, "TR") && hasParam(params, "TI") && Number(params.TI) >= Number(params.TR)) {
+    findings.push({
+      code: "timing_invalid_ti",
+      severity: "error",
+      title: "Invalid Inversion Time",
+      message: "TI must be shorter than TR for inversion-recovery timing.",
+      suggestion: "Set TI below TR before scoring FLAIR or other inversion-recovery sequences.",
+      relatedParameter: "TI"
+    });
+  }
 
   if (score.componentScores.position < 0.8) {
     const suggestion = box
@@ -376,9 +402,11 @@ export const computeScore = (
     finalPct >= gates.finalPercent &&
     best.componentScores.position >= gates.positionMin &&
     best.componentScores.coverage >= gates.coverageMin &&
-    best.componentScores.angulation >= gates.angulationMin;
+    best.componentScores.angulation >= gates.angulationMin &&
+    !(hasParam(params, "TR") && hasParam(params, "TE") && Number(params.TR) < Number(params.TE)) &&
+    !(hasParam(params, "TR") && hasParam(params, "TI") && Number(params.TI) >= Number(params.TR));
 
-  const findings = buildFindings(protocol, best, pass, box);
+  const findings = buildFindings(protocol, best, pass, box, params);
 
   return {
     scoreSchemaVersion: 2,

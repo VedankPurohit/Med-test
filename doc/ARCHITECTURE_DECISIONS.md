@@ -59,3 +59,9 @@
 - Decision: Move planner score evaluation and workstation submission summary generation behind server APIs (`POST /api/v1/planner/score`, `POST /api/v1/workstation/submit`) and consume those responses from UI.
 - Why: Keeping scoring/submission purely client-side made behavior harder to control and evolve consistently for public deployment.
 - Consequence: UI still manages interaction state, but score/reveal policy and summary computation are now enforced by server endpoints.
+
+## ADR-011: Brain sequence-specific parameter schemas
+- Status: Accepted
+- Decision: Brain protocols use protocol-specific editable/scored parameter specs instead of the full advanced parameter catalog for every sequence.
+- Why: Real MRI setup surfaces differ by sequence family. Routine T1 SE should not teach or score unrelated controls such as `ETL`, DWI should expose `bValue` and high-bandwidth EPI controls rather than TSE-only controls, FLAIR should expose `TI`, and computed values such as scan time should stay derived UI output.
+- Consequence: Protocol target params must match the protocol's parameter specs exactly. Sequence-specific additions remain data-driven through `parameterSpecs`, while the UI computes scan time from the active params without storing or scoring `ScanTime`.

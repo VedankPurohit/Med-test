@@ -9,7 +9,6 @@ import {
   getProjectedGeometry,
   hitTestCube,
   hitTestFlat,
-  inPlaneAngle,
   VIEW_CONFIG
 } from "@/features/planner/lib/geometry";
 import { deepClone, withFallbackTarget } from "@/features/planner/lib/scoring";
@@ -48,8 +47,6 @@ import { downloadJson } from "@/features/planner/lib/media";
 
 type DragState =
   | { mode: "move"; viewId: ViewId; axisA: keyof Vector3; axisB: keyof Vector3; offsetA: number; offsetB: number }
-  | { mode: "resize-edge"; viewId: ViewId; edgeIndex: 0 | 1 | 2 | 3; sizeAxis: keyof Vector3; angle: number; initialSize: number; initialProjected: number }
-  | { mode: "resize-corner"; viewId: ViewId; cornerIndex: 0 | 1 | 2 | 3; sizeAxisA: keyof Vector3; sizeAxisB: keyof Vector3; angle: number; initialSizeA: number; initialSizeB: number; initialProjectedA: number; initialProjectedB: number }
   | { mode: "rotate"; viewId: ViewId; rotationAxis: keyof Rotation3; initialPointerAngle: number; initialRotationDeg: number };
 
 const ROTATION_AXIS_FOR_VIEW: Record<ViewId, keyof Rotation3> = {
@@ -306,7 +303,10 @@ export const usePlannerState = () => {
         ...current,
         size: {
           ...current.size,
-          [axis]: clamp(value, 0.2, 1.8)
+          // Generous bounds (~12.5 mm – 1000 mm at NORM_TO_MM = 250) so the
+          // box can extend along the slice axis as Slices/Thickness/Gap grow,
+          // while keeping a small floor that prevents collapse on bad input.
+          [axis]: clamp(value, 0.05, 4.0)
         }
       };
     });
@@ -354,56 +354,12 @@ export const usePlannerState = () => {
         return true;
       }
 
-      if (handle.kind === "edge" && mode === "flat2d") {
-        const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
-        const angle = inPlaneAngle(box, viewId);
-        // Edges 0,2 (horizontal in local space) control axisB
-        // Edges 1,3 (vertical in local space) control axisA
-        const sizeAxis = handle.index % 2 === 0 ? axisB : axisA;
-        const center2D = { x: box.center[axisA], y: box.center[axisB] };
-        // Project pointer onto edge normal direction
-        const edgeNormalAngle = handle.index % 2 === 0
-          ? angle + Math.PI / 2  // horizontal edge -> perpendicular is vertical
-          : angle;               // vertical edge -> perpendicular is horizontal
-        const dx = point.x - center2D.x;
-        const dy = point.y - center2D.y;
-        const projected = dx * Math.cos(edgeNormalAngle) + dy * Math.sin(edgeNormalAngle);
-
-        setDrag({
-          mode: "resize-edge",
-          viewId,
-          edgeIndex: handle.index,
-          sizeAxis,
-          angle,
-          initialSize: box.size[sizeAxis],
-          initialProjected: projected
-        });
-        return true;
-      }
-
-      if (handle.kind === "corner" && mode === "flat2d") {
-        const [axisA, axisB] = FLAT_VIEW_AXES[viewId];
-        const angle = inPlaneAngle(box, viewId);
-        const center2D = { x: box.center[axisA], y: box.center[axisB] };
-        const dx = point.x - center2D.x;
-        const dy = point.y - center2D.y;
-        // Project onto both local axes (rotated)
-        const projA = dx * Math.cos(angle) + dy * Math.sin(angle);
-        const projB = -dx * Math.sin(angle) + dy * Math.cos(angle);
-
-        setDrag({
-          mode: "resize-corner",
-          viewId,
-          cornerIndex: handle.index,
-          sizeAxisA: axisA,
-          sizeAxisB: axisB,
-          angle,
-          initialSizeA: box.size[axisA],
-          initialSizeB: box.size[axisB],
-          initialProjectedA: projA,
-          initialProjectedB: projB
-        });
-        return true;
+      // Resize-via-UI is intentionally disabled: the canvas only supports move
+      // and rotate gestures. Box size is parameter-driven (Slices,
+      // SliceThickness, SliceGap on the slice axis; FOV in-plane) and is
+      // updated through the DynamicParameterPanel inputs.
+      if (handle.kind === "edge" || handle.kind === "corner") {
+        return false;
       }
 
       if (handle.kind === "rotate") {
@@ -444,47 +400,6 @@ export const usePlannerState = () => {
               ...currentBox.center,
               [currentDrag.axisA]: clamp(point.x - currentDrag.offsetA, -1, 1),
               [currentDrag.axisB]: clamp(point.y - currentDrag.offsetB, -1, 1)
-            }
-          };
-        });
-      } else if (currentDrag.mode === "resize-edge") {
-        setBox((currentBox) => {
-          if (!currentBox) {
-            return currentBox;
-          }
-          const [axisA, axisB] = FLAT_VIEW_AXES[currentDrag.viewId];
-          const center2D = { x: currentBox.center[axisA], y: currentBox.center[axisB] };
-          const dx = point.x - center2D.x;
-          const dy = point.y - center2D.y;
-          const edgeNormalAngle = currentDrag.edgeIndex % 2 === 0
-            ? currentDrag.angle + Math.PI / 2
-            : currentDrag.angle;
-          const projected = dx * Math.cos(edgeNormalAngle) + dy * Math.sin(edgeNormalAngle);
-          const newSize = clamp(2 * Math.abs(projected), 0.2, 1.8);
-          return {
-            ...currentBox,
-            size: { ...currentBox.size, [currentDrag.sizeAxis]: newSize }
-          };
-        });
-      } else if (currentDrag.mode === "resize-corner") {
-        setBox((currentBox) => {
-          if (!currentBox) {
-            return currentBox;
-          }
-          const [axisA, axisB] = FLAT_VIEW_AXES[currentDrag.viewId];
-          const center2D = { x: currentBox.center[axisA], y: currentBox.center[axisB] };
-          const dx = point.x - center2D.x;
-          const dy = point.y - center2D.y;
-          const projA = dx * Math.cos(currentDrag.angle) + dy * Math.sin(currentDrag.angle);
-          const projB = -dx * Math.sin(currentDrag.angle) + dy * Math.cos(currentDrag.angle);
-          const newSizeA = clamp(2 * Math.abs(projA), 0.2, 1.8);
-          const newSizeB = clamp(2 * Math.abs(projB), 0.2, 1.8);
-          return {
-            ...currentBox,
-            size: {
-              ...currentBox.size,
-              [currentDrag.sizeAxisA]: newSizeA,
-              [currentDrag.sizeAxisB]: newSizeB
             }
           };
         });
