@@ -481,14 +481,14 @@ const drawVolumeBoundary = (
 /**
  * Render the projected convex hull as a single closed 2D polygon.
  *
- * Kept for the cube3d path (where it complements the 12-edge cube wireframe
- * in `drawProjectedOutline`). In flat2d mode the derived view used to fall
- * back to this routine so it would react to rx/rz rotations — but the
- * resulting 5–6 sided silhouette read visually as a 3D cube, defeating
- * flat2d's "clean rectangle" contract. Derived flat2d views now use
- * `drawFlatOutline` for visual consistency with the editable views; the
- * trade-off is that the derived rectangle only tilts with its own
- * in-plane angle (which mirrors how editable flat2d views behave).
+ * Used by the cube3d path (where it complements the 12-edge cube wireframe
+ * in `drawProjectedOutline`). flat2d intentionally does NOT call this — its
+ * contract is "always a 4-corner quadrilateral, never a 5-/6-sided cube
+ * silhouette." flat2d gets cross-view rotational coupling a different way:
+ * `getFlatGeometry` projects the in-plane center face of the box through
+ * the full 3D rotation, so the rectangle foreshortens / tilts in response
+ * to any view's rotation while staying a quadrilateral. Use cube3d when
+ * the user wants the full 8-corner wireframe.
  */
 const drawHullOutline = (
   ctx: CanvasRenderingContext2D,
@@ -552,14 +552,14 @@ const drawOutlineForMode = (
   h: number
 ) => {
   if (mode === "flat2d") {
-    // Both editable and derived views render a clean 4-corner rectangle
-    // via drawFlatOutline. The derived view used to fall through to
-    // drawHullOutline so it would visibly tilt with rx/rz, but the
-    // resulting 5–6 sided silhouette read as a 3D cube — defeating
-    // flat2d's "everything is a flat rectangle" contract. With this
-    // change, derived rectangles only respond to their own in-plane
-    // angle (matching how editable flat2d views behave). Switch to
-    // cube3d if you want full 3D-rotation visualization.
+    // Both editable and derived views render a 4-corner quadrilateral
+    // via drawFlatOutline. The corners come from getFlatGeometry, which
+    // projects the in-plane center face of the box through the full 3D
+    // rotation pipeline — so out-of-plane Euler rotations foreshorten the
+    // rectangle (it tilts / squishes into a parallelogram) while in-plane
+    // Euler rotation tilts it. Crucially, the result is always 4 corners,
+    // never a 5-/6-sided silhouette — that hexagonal cube wireframe is
+    // reserved exclusively for cube3d via drawProjectedOutline.
     drawFlatOutline(ctx, box, viewId, style, w, h);
     return;
   }
@@ -583,17 +583,20 @@ type SliceLineStyle = {
  *
  * Math reuses the same pipeline as the box outline:
  *   - cube3d: rotate3D → translate → projectPoint → normToScreen
- *   - flat2d: rotate2D (in-plane) → translate → normToScreen
+ *   - flat2d: rotate3D of the in-plane center face → translate →
+ *             projectPoint → normToScreen
  *
- * That means slabs tilt in lock-step with the box rotation in cube3d, and
- * follow `inPlaneAngle` in flat2d.
+ * Both modes apply the full 3D rotation, so slabs stay glued to the
+ * (possibly foreshortened) box outline through any rotation, including
+ * rotations applied via other views. The flat2d difference is that we
+ * project a single in-plane face, not the whole cube — so slabs render
+ * as 2D segments inside a 4-corner rectangle, not as quads of a 3D cube.
  *
  * Visibility rule: slice lines are drawn only on *editable* views (the
  * prescription views the user is steering); derived views render the
  * outline alone, no slabs. When the slice axis is the editable view's
- * out-of-plane axis and the box is unrotated, all N slabs collapse onto
- * the same rectangle and visually look like the box outline — that's
- * geometrically correct, not a bug.
+ * out-of-plane axis, getSlicePlaneFlat2D returns [] because all N slabs
+ * project onto the same rectangle — geometrically correct, not a bug.
  */
 const drawSliceLines = (
   ctx: CanvasRenderingContext2D,
@@ -622,16 +625,17 @@ const drawSliceLines = (
 
   // Mirror the outline's projection mode so slabs and outline obey the
   // same contract:
-  //   - flat2d: in-plane angle only. Slabs become clean 2D segments
-  //     attached to the box outline; rotations from other views never
-  //     affect what's drawn here. When the slice axis is the view's
-  //     out-of-plane axis (e.g. sagittal-view + sagittal-protocol with
-  //     SliceOrientation = LR), getSlicePlaneFlat2D returns [] because
-  //     all N slabs project onto the same rectangle — geometrically
-  //     correct in flat2d. To see those slices distinctly, change
-  //     SliceOrientation to AP / HF, or switch to cube3d render mode.
-  //   - cube3d: full Rotation3 projection. Slabs tilt with the actual
-  //     3D orientation of the box, matching how the cube outline draws.
+  //   - flat2d: full 3D projection of the in-plane center face. Slabs
+  //     are 2D segments glued to the box outline; rotations on any Euler
+  //     axis foreshorten / tilt them in lockstep with the rectangle.
+  //     When the slice axis is the view's out-of-plane axis (e.g.
+  //     sagittal-view + sagittal-protocol with SliceOrientation = LR),
+  //     getSlicePlaneFlat2D returns [] because all N slabs project onto
+  //     the same rectangle — geometrically correct in flat2d. To see
+  //     those slices distinctly, change SliceOrientation to AP / HF, or
+  //     switch to cube3d render mode.
+  //   - cube3d: full 3D projection of cube faces. Slabs draw as quads of
+  //     the actual 3D cube, matching how the cube outline draws.
   ctx.save();
   ctx.globalAlpha = style.alpha;
   ctx.strokeStyle = style.color;

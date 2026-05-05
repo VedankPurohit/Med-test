@@ -386,7 +386,7 @@ export default function WorkstationLayout() {
             <PatientInfoSection />
           </div>
           <div
-            className="shrink-0"
+            className="shrink-0 flex flex-col overflow-hidden"
             style={{
               height: 220,
               borderTop: '1px solid var(--chrome-border)',
