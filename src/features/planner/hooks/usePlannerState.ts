@@ -413,7 +413,14 @@ export const usePlannerState = () => {
           const currentAngle = Math.atan2(point.y - center2D.y, point.x - center2D.x);
           const deltaRad = currentAngle - currentDrag.initialPointerAngle;
           const deltaDeg = (deltaRad * 180) / Math.PI;
-          const newRotation = clamp(currentDrag.initialRotationDeg + deltaDeg, -45, 45);
+          // Clamp to ±90° to match real MRI console ranges. The legacy
+          // ±45° cap was a training-tool simplification; clinical
+          // prescriptions (cardiac obliques, hippocampus, sacral spine)
+          // routinely exceed it. flat2d's rectangle stays a convex
+          // quadrilateral up to ±90° on a single axis (the face becomes
+          // edge-on at exactly 90°, which we round-trip safely because
+          // projectPoint just collapses the corners).
+          const newRotation = clamp(currentDrag.initialRotationDeg + deltaDeg, -90, 90);
           return {
             ...currentBox,
             rotation: { ...currentBox.rotation, [currentDrag.rotationAxis]: newRotation }

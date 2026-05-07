@@ -477,10 +477,14 @@ export const rotate2D = (point: Point2, radians: number): Point2 => {
  * it. The contract is "always 4 corners, never a hexagonal silhouette" —
  * the silhouette path is reserved for cube3d.
  *
- * `hull` equals `projected` because rotation is clamped to ±45° per axis
- * (see usePlannerState's rotate drag clamp), which keeps the projected
- * quadrilateral convex with non-zero area; for 4 convex points the hull
- * is the points themselves in their existing CCW order.
+ * `hull` equals `projected` because rotation is clamped to ±90° per axis
+ * (see usePlannerState's rotate drag clamp). Within (-90°, +90°) the
+ * projected quadrilateral stays convex with non-zero area, so its hull
+ * is the 4 points themselves in their existing CCW order. At exactly
+ * ±90° on a single out-of-plane axis the face becomes edge-on and the
+ * quadrilateral collapses to a zero-area sliver — geometrically correct
+ * (a real slab seen edge-on has no thickness to display) and recoverable
+ * the moment the rotation moves off the limit.
  */
 export const getFlatGeometry = (box: PlannerBox, viewId: ViewId) => {
   const center2D = projectPoint(box.center, viewId);

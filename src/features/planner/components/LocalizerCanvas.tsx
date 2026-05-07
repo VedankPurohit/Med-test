@@ -197,10 +197,13 @@ export const LocalizerCanvas = ({
       }
     }
 
-    // On-canvas label: EDITABLE or DERIVED
+    // On-canvas label: anatomical view name (AXIAL / SAGITTAL / CORONAL),
+    // matching the labels real MRI consoles show in the corner of each
+    // localizer pane. Color subtly reflects which views the user can
+    // drive directly (editable) vs. those that follow the box state.
     ctx.font = "bold 9px sans-serif";
     ctx.fillStyle = editable ? "rgba(87,255,241,0.55)" : "rgba(196,164,77,0.5)";
-    ctx.fillText(editable ? "EDITABLE" : "DERIVED", 8, 16);
+    ctx.fillText(viewId.toUpperCase(), 8, 16);
   }, [
     box,
     boxRenderMode,
@@ -592,11 +595,12 @@ type SliceLineStyle = {
  * project a single in-plane face, not the whole cube — so slabs render
  * as 2D segments inside a 4-corner rectangle, not as quads of a 3D cube.
  *
- * Visibility rule: slice lines are drawn only on *editable* views (the
- * prescription views the user is steering); derived views render the
- * outline alone, no slabs. When the slice axis is the editable view's
- * out-of-plane axis, getSlicePlaneFlat2D returns [] because all N slabs
- * project onto the same rectangle — geometrically correct, not a bug.
+ * Visibility rule: slice lines render on every view, matching real MRI
+ * consoles where each localizer pane shows the prescribed slice stack
+ * regardless of which view the user happens to be driving. When the slice
+ * axis is a view's out-of-plane axis, getSlicePlaneFlat2D returns []
+ * because all N slabs project onto the same rectangle — geometrically
+ * correct, not a bug.
  */
 const drawSliceLines = (
   ctx: CanvasRenderingContext2D,
@@ -608,9 +612,10 @@ const drawSliceLines = (
   w: number,
   h: number
 ) => {
-  if (!editable) {
-    return;
-  }
+  // `editable` is intentionally not consulted here. Real consoles draw the
+  // slice stack on every localizer pane; gating to editable views was a
+  // training-tool simplification we no longer want.
+  void editable;
 
   if (box.size[style.sliceAxis] <= 0) {
     return;
