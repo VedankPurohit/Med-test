@@ -11,7 +11,7 @@ const BRAIN_REGION: RegionConfig = {
   id: 'brain',
   displayName: 'Brain',
   description:
-    'Routine brain MRI with 8 sequences including T2, FLAIR, T1, DWI, SWI, and 3D MPRAGE.',
+    'Guided brain MRI planning with four core sequences: sagittal T1, axial T2, axial FLAIR, and DWI.',
 };
 
 const SPINE_REGION: RegionConfig = {

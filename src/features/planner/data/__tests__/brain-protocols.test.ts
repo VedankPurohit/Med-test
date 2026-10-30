@@ -4,19 +4,14 @@ import { BRAIN_PROTOCOLS } from "@/features/planner/data/protocols/brain";
 const REQUIRED_PROTOCOL_IDS = [
   "brain_t1_sagittal",
   "brain_t2_axial",
-  "brain_t1_axial_se",
   "brain_t2_flair_axial",
-  "brain_dwi_axial",
-  "brain_swi_axial",
-  "brain_t1_se_coronal",
-  "brain_t2_coronal",
-  "brain_t1_axial_post"
+  "brain_dwi_axial"
 ] as const;
 
 describe("brain protocols", () => {
   it("contains the required core protocol set", () => {
     const ids = BRAIN_PROTOCOLS.map((protocol) => protocol.id);
-    expect(ids).toEqual(expect.arrayContaining([...REQUIRED_PROTOCOL_IDS]));
+    expect(ids).toEqual([...REQUIRED_PROTOCOL_IDS]);
   });
 
   it("uses unique IDs and non-empty labels", () => {
@@ -26,6 +21,8 @@ describe("brain protocols", () => {
     for (const protocol of BRAIN_PROTOCOLS) {
       expect(protocol.label.trim().length).toBeGreaterThan(0);
       expect(protocol.parameterSpecs.length).toBeGreaterThan(0);
+      expect(protocol.teaching?.purpose?.trim().length).toBeGreaterThan(0);
+      expect(protocol.teaching?.planningHint?.trim().length).toBeGreaterThan(0);
     }
   });
 
@@ -76,10 +73,6 @@ describe("brain protocols", () => {
     const dwi = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_dwi_axial");
     expect(dwi?.target.params.TE).toBeGreaterThanOrEqual(60);
     expect(dwi?.target.params.SliceGap).toBeLessThanOrEqual(0.5);
-
-    const swi = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_swi_axial");
-    expect(swi?.target.params.TR).toBeLessThanOrEqual(100);
-    expect(swi?.target.params.SliceThickness).toBeLessThanOrEqual(2.5);
 
     const flairWithTi = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_t2_flair_axial");
     expect(flairWithTi?.target.params.TI).toBeGreaterThanOrEqual(1500);

@@ -18,7 +18,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
 const isProtocolStatus = (value: unknown): value is ProtocolListItem["status"] =>
-  value === "pending" || value === "active" || value === "completed" || value === "skipped";
+  value === "not_planned" ||
+  value === "planning" ||
+  value === "accepted" ||
+  value === "completed" ||
+  value === "error";
 
 const isProtocolListItem = (value: unknown): value is ProtocolListItem =>
   isRecord(value) &&
@@ -98,4 +102,3 @@ export const buildSubmissionSummaryResponse = (
     submitReason: allowSubmit ? "all-visited" : "blocked"
   };
 };
-

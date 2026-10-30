@@ -11,7 +11,7 @@ export type WorkstationPhase =
   | 'protocol-active';
 
 /** Status of a protocol in the sidebar list */
-export type ProtocolStatus = 'pending' | 'active' | 'completed' | 'skipped';
+export type ProtocolStatus = 'not_planned' | 'planning' | 'accepted' | 'completed' | 'error';
 
 /** A protocol added to the exam's sidebar list */
 export interface ProtocolListItem {

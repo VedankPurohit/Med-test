@@ -33,6 +33,7 @@ const makeScore = (protocolId: string): PlannerScore => ({
   finalScorePercent: 88,
   pass: true,
   feedback: [],
+  findings: [],
   componentScores: {
     positionPercent: 90,
     coveragePercent: 85,

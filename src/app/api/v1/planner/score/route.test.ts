@@ -33,6 +33,7 @@ describe("POST /api/v1/planner/score", () => {
     const data = await response.json();
     expect(data.revealTarget).toBe(true);
     expect(data.score.protocolId).toBe("brain_t2_axial");
+    expect(Array.isArray(data.score.findings)).toBe(true);
   });
 
   it("rejects invalid payload", async () => {
@@ -49,4 +50,3 @@ describe("POST /api/v1/planner/score", () => {
     expect(data.code).toBe("INVALID_PAYLOAD");
   });
 });
-

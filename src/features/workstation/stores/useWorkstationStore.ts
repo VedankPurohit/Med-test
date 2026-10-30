@@ -162,6 +162,8 @@ interface WorkstationActions {
   completeSurvey: () => void;
   activateProtocol: (index: number) => void;
   completeProtocol: (index: number) => void;
+  markProtocolAccepted: (index: number) => void;
+  markProtocolNeedsRetry: (index: number) => void;
   setBrowserOpen: (open: boolean) => void;
   toggleFolder: (folderId: string) => void;
   setRightPanelTab: (tab: RightPanelTab) => void;
@@ -206,7 +208,7 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
             shortName: protocol.shortName,
             orientation: protocol.orientation,
             region: protocol.region,
-            status: 'pending',
+            status: 'not_planned',
           },
         ],
       });
@@ -282,17 +284,14 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
       set((state) => {
         if (index < 0 || index >= state.addedProtocols.length) return state;
         const protocols = [...state.addedProtocols];
-        if (
-          state.activeProtocolIndex !== null &&
-          state.activeProtocolIndex !== index &&
-          state.activeProtocolIndex < protocols.length
-        ) {
-          protocols[state.activeProtocolIndex] = {
-            ...protocols[state.activeProtocolIndex],
-            status: 'completed',
-          };
-        }
-        protocols[index] = { ...protocols[index], status: 'active' };
+        const currentStatus = protocols[index].status;
+        protocols[index] = {
+          ...protocols[index],
+          status:
+            currentStatus === 'not_planned' || currentStatus === 'error'
+              ? 'planning'
+              : currentStatus,
+        };
         return {
           addedProtocols: protocols,
           activeProtocolIndex: index,
@@ -307,6 +306,26 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
         if (index < 0 || index >= state.addedProtocols.length) return state;
         const protocols = [...state.addedProtocols];
         protocols[index] = { ...protocols[index], status: 'completed' };
+        return { addedProtocols: protocols };
+      });
+    },
+
+    markProtocolAccepted: (index) => {
+      set((state) => {
+        if (index < 0 || index >= state.addedProtocols.length) return state;
+        const protocols = [...state.addedProtocols];
+        protocols[index] = { ...protocols[index], status: 'accepted' };
+        return { addedProtocols: protocols };
+      });
+    },
+
+    markProtocolNeedsRetry: (index) => {
+      set((state) => {
+        if (index < 0 || index >= state.addedProtocols.length) return state;
+        const protocols = [...state.addedProtocols];
+        if (protocols[index].status !== 'completed') {
+          protocols[index] = { ...protocols[index], status: 'error' };
+        }
         return { addedProtocols: protocols };
       });
     },

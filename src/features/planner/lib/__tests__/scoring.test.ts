@@ -74,6 +74,7 @@ describe("scoring core", () => {
     expect(score.componentScores.positionPercent).toBe(100);
     expect(score.scoreSchemaVersion).toBe(2);
     expect(score.matchedTargetIndex).toBe(0);
+    expect(score.findings[0]?.code).toBe("planning_ready");
   });
 
   it("matches accepted alternate target when closer", () => {
@@ -108,6 +109,7 @@ describe("scoring core", () => {
     expect(score.rawErrors.center).toBeGreaterThan(0.5);
     expect(score.calibratedTargetUsed).toBe(true);
     expect(score.feedback.length).toBeGreaterThan(0);
+    expect(score.findings.some((finding) => finding.code === "coverage_off_center")).toBe(true);
   });
 
   it("merges fallback target fields when calibration is partial", () => {

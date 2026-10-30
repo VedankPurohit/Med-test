@@ -526,9 +526,9 @@ export const usePlannerState = () => {
     [box]
   );
 
-  const checkPlanning = useCallback(async () => {
+  const checkPlanning = useCallback(async (): Promise<PlannerScoreResponse | null> => {
     if (!caseId || !currentProtocol || !box || !params) {
-      return;
+      return null;
     }
 
     const calibration = calibrations[protocolKey(caseId, currentProtocol.id)];
@@ -573,12 +573,14 @@ export const usePlannerState = () => {
       setStatusKind(data.score.pass ? "info" : "warn");
       setStatusMessage(
         data.score.pass
-          ? `PASS - ${data.score.finalScorePercent}% overall`
-          : `NOT YET - ${data.score.finalScorePercent}% overall`
+          ? `PASS - ${data.score.finalScorePercent}% overall. Accept and run the sequence.`
+          : `NOT YET - ${data.score.finalScorePercent}% overall. Review guidance and retry.`
       );
+      return data;
     } catch (error) {
       setStatusKind("warn");
       setStatusMessage(error instanceof Error ? error.message : "Scoring failed.");
+      return null;
     } finally {
       setIsChecking(false);
     }

@@ -45,7 +45,7 @@ export default function BottomRightTabs({ bridge }: { bridge?: PlannerBridge }) 
 
       <div className="flex-1 min-h-0">
         {activeTab === 'realtime' ? (
-          <RealTimePanel />
+          <RealTimePanel bridge={bridge} />
         ) : bridge?.isActive ? (
           <FeedbackPanel bridge={bridge} />
         ) : (
