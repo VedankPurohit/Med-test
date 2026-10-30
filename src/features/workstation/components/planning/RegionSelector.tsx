@@ -2,6 +2,7 @@
 
 import { getAllRegions, type RegionConfig } from '@/features/workstation/lib/regions';
 import type { RegionId } from '@/features/workstation/types/mri';
+import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 
 interface RegionSelectorProps {
   onSelect: (regionId: RegionId) => void;
@@ -42,7 +43,7 @@ function RegionCard({
           className="text-[20px] font-bold"
           style={{ color: 'var(--accent-blue)' }}
         >
-          {region.id === 'brain' ? 'B' : 'S'}
+          {region.id === 'brain' ? 'B' : region.id === 'spine' ? 'S' : 'K'}
         </span>
       </div>
 
@@ -80,7 +81,7 @@ export default function RegionSelector({ onSelect }: RegionSelectorProps) {
         background: 'radial-gradient(ellipse at center, var(--chrome-surface) 0%, var(--chrome-bg) 70%)',
       }}
     >
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-3">
         <div className="flex items-center justify-center gap-2">
           <div
             className="w-2 h-2 rounded-full"
@@ -96,11 +97,23 @@ export default function RegionSelector({ onSelect }: RegionSelectorProps) {
             MedAssist
           </span>
         </div>
+        <h1
+          className="text-[22px] font-bold tracking-tight"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          MRI Planning Training Simulator
+        </h1>
         <p
-          className="text-[11px] tracking-wide"
+          className="text-[12px] tracking-wide"
           style={{ color: 'var(--text-muted)' }}
         >
-          Select body region to begin
+          Select a body region to begin
+        </p>
+        <p
+          className="text-[11px] tracking-wide max-w-md mx-auto"
+          style={{ color: 'var(--text-secondary)', opacity: 0.7 }}
+        >
+          Practice scan planning with real MRI data and instant feedback
         </p>
       </div>
 
@@ -112,6 +125,40 @@ export default function RegionSelector({ onSelect }: RegionSelectorProps) {
             onSelect={() => onSelect(region.id)}
           />
         ))}
+      </div>
+
+      {/* Quick Start */}
+      <div className="flex flex-col items-center gap-2">
+        <button
+          onClick={() => useWorkstationStore.getState().quickStartBrain()}
+          className="btn-sm"
+          style={{
+            padding: '6px 16px',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            border: '1px solid var(--accent-blue)',
+            color: 'var(--accent-blue)',
+            background: 'var(--accent-blue-dim)',
+            borderRadius: 6,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--accent-blue-strong)';
+            e.currentTarget.style.boxShadow = 'var(--glow-blue)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--accent-blue-dim)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          Quick Start &mdash; Brain MRI
+        </button>
+        <p
+          className="text-[9px] tracking-wide"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          Jump straight into a 4-sequence Brain MRI exam
+        </p>
       </div>
 
       <p

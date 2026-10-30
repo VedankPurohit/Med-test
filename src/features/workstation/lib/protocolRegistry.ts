@@ -16,6 +16,10 @@ const EXAMCARD_TO_PLANNER: Record<string, { caseId: CaseId; plannerProtocolId: s
   'axial-swi':             { caseId: 'brain', plannerProtocolId: 'brain_swi_axial' },
   // Dorsal spine (thoracic)
   'spine-sagittal-t2-tse': { caseId: 'tspine', plannerProtocolId: 'tspine_sag_t2' },
+  'spine-sagittal-t1-dorsal': { caseId: 'tspine', plannerProtocolId: 'tspine_sag_t1' },
+  'spine-axial-t2-dorsal':   { caseId: 'tspine', plannerProtocolId: 'tspine_ax_t2' },
+  'spine-sagittal-stir-dorsal': { caseId: 'tspine', plannerProtocolId: 'tspine_sag_stir' },
+  'spine-axial-t1-post-dorsal': { caseId: 'tspine', plannerProtocolId: 'tspine_ax_t1_post' },
   // Dorsal spine (lumbar)
   'spine-sagittal-t1-tse': { caseId: 'lspine', plannerProtocolId: 'lspine_sag_t1' },
   'spine-sagittal-stir':   { caseId: 'lspine', plannerProtocolId: 'lspine_sag_stir' },
@@ -24,6 +28,14 @@ const EXAMCARD_TO_PLANNER: Record<string, { caseId: CaseId; plannerProtocolId: s
   // Neck (cervical)
   'neck-sag-t2':           { caseId: 'cspine', plannerProtocolId: 'cspine_sag_t2' },
   'neck-ax-t2':            { caseId: 'cspine', plannerProtocolId: 'cspine_ax_t2' },
+  'neck-cor-stir':         { caseId: 'cspine', plannerProtocolId: 'cspine_cor_stir' },
+  'neck-ax-t1-post':       { caseId: 'cspine', plannerProtocolId: 'cspine_ax_t1_post' },
+  // Knee
+  'knee-sag-pd':           { caseId: 'knee', plannerProtocolId: 'knee_sag_pd' },
+  'knee-sag-t2-fs':        { caseId: 'knee', plannerProtocolId: 'knee_sag_t2_fs' },
+  'knee-cor-pd':           { caseId: 'knee', plannerProtocolId: 'knee_cor_pd' },
+  'knee-ax-pd':            { caseId: 'knee', plannerProtocolId: 'knee_ax_pd' },
+  'knee-cor-t1':           { caseId: 'knee', plannerProtocolId: 'knee_cor_t1' },
 };
 
 export type ResolvedProtocol = {

@@ -1,5 +1,5 @@
 export type ViewId = "axial" | "sagittal" | "coronal";
-export type CaseId = "brain" | "cspine" | "tspine" | "lspine";
+export type CaseId = "brain" | "cspine" | "tspine" | "lspine" | "knee";
 export type BoxRenderMode = "flat2d" | "cube3d";
 
 export const STANDARD_PARAMETER_KEYS = [
@@ -10,6 +10,59 @@ export const STANDARD_PARAMETER_KEYS = [
   "SliceThickness",
   "SliceGap"
 ] as const;
+
+export const EXTENDED_PARAMETER_KEYS = [
+  ...STANDARD_PARAMETER_KEYS,
+  "FlipAngle",
+  "MatrixFreq",
+  "MatrixPhase",
+  "NEX",
+  "Bandwidth",
+  "ETL",
+  "PhaseEncDir",
+  "FatSuppression",
+  "TI",
+  "ScanTime"
+] as const;
+
+export type ExtendedParameterKey = (typeof EXTENDED_PARAMETER_KEYS)[number];
+
+export type PhaseEncDirection = "AP" | "PA" | "RL" | "LR" | "SI" | "IS";
+export const PHASE_ENC_DIRECTIONS: PhaseEncDirection[] = ["AP", "PA", "RL", "LR", "SI", "IS"];
+
+export type FatSuppressionMode = "None" | "CHESS" | "STIR" | "SPAIR" | "Dixon";
+export const FAT_SUPPRESSION_MODES: FatSuppressionMode[] = ["None", "CHESS", "STIR", "SPAIR", "Dixon"];
+
+/**
+ * Slice orientation — which world axis the slice stack runs along.
+ * Distinct from PhaseEncDir (an in-plane gradient direction); this drives
+ * the geometry of the box itself: the slice-axis dimension grows with
+ * Slices/Thickness/Gap, and the other two carry the FOV.
+ *
+ * Encoding (kept aligned with world axis order x → y → z):
+ *   0 = LR (Left-Right) → x
+ *   1 = AP (Anterior-Posterior, "front-back") → y
+ *   2 = HF (Head-Foot / Superior-Inferior) → z
+ */
+export type SliceOrientation = "LR" | "AP" | "HF";
+export const SLICE_ORIENTATIONS: SliceOrientation[] = ["LR", "AP", "HF"];
+
+/**
+ * Parameter specs that are *structural* / *opt-in*: their absence in
+ * `target.params` is meaningful (= "use the protocol-derived default")
+ * rather than a config error. Validators and bijection-style tests must
+ * ignore these when checking that every spec has a target value.
+ */
+export const STRUCTURAL_SPEC_KEYS = new Set<string>(["SliceOrientation"]);
+
+export type SequenceStatusId =
+  | "not_planned"
+  | "planning_started"
+  | "planning_accepted"
+  | "scan_running"
+  | "completed"
+  | "error"
+  | "warning";
 
 export type StandardParameterKey = (typeof STANDARD_PARAMETER_KEYS)[number];
 export type ParameterKey = StandardParameterKey | (string & {});
@@ -86,6 +139,28 @@ export type ProtocolInteractionRules = {
   rotationBounds?: { min: number; max: number };
 };
 
+export type ProtocolTeachingHighlight = {
+  key: string;
+  explanation: string;
+};
+
+export type ProtocolTeachingContent = {
+  purpose: string;
+  planningHint: string;
+  planningChecklist: string[];
+  parameterHighlights: ProtocolTeachingHighlight[];
+  correctOrderHint: number;
+};
+
+export type ScoreFinding = {
+  code: string;
+  severity: "error" | "warning" | "info";
+  title: string;
+  message: string;
+  suggestion?: string;
+  relatedParameter?: string;
+};
+
 export type ProtocolConfig = {
   id: string;
   label: string;
@@ -97,6 +172,8 @@ export type ProtocolConfig = {
   scoringProfile?: ProtocolScoringProfile;
   interactionRules?: ProtocolInteractionRules;
   clinicalNotes?: string[];
+  teaching?: ProtocolTeachingContent;
+  workflowOrder?: number;
 };
 
 export type LocalizerSet = {
@@ -110,6 +187,7 @@ export type CaseConfig = {
   label: string;
   protocols: ProtocolConfig[];
   localizerSets: LocalizerSet[];
+  volumeUrl?: string;
 };
 
 export type PlannerScore = {
@@ -123,6 +201,7 @@ export type PlannerScore = {
   finalScorePercent: number;
   pass: boolean;
   feedback: string[];
+  findings?: ScoreFinding[];
   componentScores: {
     positionPercent: number;
     coveragePercent: number;

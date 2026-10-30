@@ -6,6 +6,9 @@ export const MOCK_PATIENT = {
   age: 40,
   gender: 'M',
   weight: '78 kg',
+  studyType: 'Brain MRI Routine',
+  contrastRequired: false,
+  contrastAgent: '',
 } as const;
 
 /** Mock scanner data */

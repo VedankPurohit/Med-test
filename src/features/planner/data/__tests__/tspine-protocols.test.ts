@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { TSPINE_PROTOCOLS } from "@/features/planner/data/protocols/tspine";
 
 const REQUIRED_PROTOCOL_IDS = [
-  "tspine_sag_t2"
+  "tspine_sag_t2",
+  "tspine_sag_t1",
+  "tspine_ax_t2"
 ] as const;
 
 describe("thoracic spine protocols", () => {

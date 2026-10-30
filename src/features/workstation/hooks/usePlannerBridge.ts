@@ -13,6 +13,13 @@ export function usePlannerBridge() {
   const caseId = useWorkstationStore((s) => s.caseId);
 
   const planner = usePlannerState();
+  // Default to flat2d — clean 2D-rectangle look across all three panels. The
+  // editable views (axial, sagittal) get drag handles for resize / rotate;
+  // the derived (coronal) view renders as a flat polygon outline of the
+  // projected cube, computed via getProjectedGeometry — so it still reflects
+  // rotations made in the editable views (rx, rz) without showing 3D wire
+  // edges. See drawHullOutline in LocalizerCanvas.tsx for that path. Users
+  // who want the full 3D wire view can flip the top-bar toggle to cube3d.
   const [boxRenderMode, setBoxRenderMode] = useState<BoxRenderMode>('flat2d');
   const plannerCaseId = planner.caseId;
   const plannerProtocolId = planner.protocolId;

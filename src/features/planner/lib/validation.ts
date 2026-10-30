@@ -1,4 +1,4 @@
-import { ProtocolConfig } from "@/features/planner/types/planner";
+import { ProtocolConfig, STRUCTURAL_SPEC_KEYS } from "@/features/planner/types/planner";
 
 const finite = (value: number): boolean => Number.isFinite(value);
 
@@ -44,6 +44,15 @@ export const validateProtocolConfig = (protocol: ProtocolConfig): string[] => {
     errors.push(`Protocol ${protocol.id} missing parameterSpecs for: ${missingSpecs.join(", ")}.`);
   }
 
+  // Structural specs (e.g. SliceOrientation) are opt-in: absence in the
+  // target params is intentional and means "use the protocol-derived
+  // default". Only require target values for graded specs.
+  const missingTargetValues = paramKeys.filter(
+    (key) => !targetKeys.includes(key) && !STRUCTURAL_SPEC_KEYS.has(key)
+  );
+  if (missingTargetValues.length > 0) {
+    errors.push(`Protocol ${protocol.id} has parameterSpecs without target params for: ${missingTargetValues.join(", ")}.`);
+  }
+
   return errors;
 };
-

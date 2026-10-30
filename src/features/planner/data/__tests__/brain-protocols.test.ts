@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BRAIN_PROTOCOLS } from "@/features/planner/data/protocols/brain";
+import { STRUCTURAL_SPEC_KEYS } from "@/features/planner/types/planner";
 
 const REQUIRED_PROTOCOL_IDS = [
   "brain_t1_sagittal",
@@ -86,5 +87,50 @@ describe("brain protocols", () => {
 
     const dwiWithBValue = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_dwi_axial");
     expect(dwiWithBValue?.target.params.bValue).toBeGreaterThanOrEqual(800);
+  });
+
+  it("uses protocol-specific brain parameter sets instead of one global advanced panel", () => {
+    for (const protocol of BRAIN_PROTOCOLS) {
+      // Filter structural specs (e.g. SliceOrientation) — they're opt-in
+      // and intentionally absent from target.params unless the user picks
+      // a non-default orientation.
+      const specKeys = protocol.parameterSpecs
+        .map((spec) => String(spec.key))
+        .filter((key) => !STRUCTURAL_SPEC_KEYS.has(key));
+      const targetKeys = Object.keys(protocol.target.params);
+
+      expect(specKeys).toEqual(targetKeys);
+      expect(specKeys).not.toContain("ScanTime");
+    }
+
+    const t1Sag = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_t1_sagittal")!;
+    const t1SagKeys = t1Sag.parameterSpecs.map((spec) => String(spec.key));
+    expect(t1SagKeys).not.toContain("ETL");
+    expect(t1SagKeys).not.toContain("FlipAngle");
+    expect(t1SagKeys).not.toContain("FatSuppression");
+    expect(t1SagKeys).not.toContain("Bandwidth");
+
+    const flair = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_t2_flair_axial")!;
+    const flairKeys = flair.parameterSpecs.map((spec) => String(spec.key));
+    expect(flairKeys).toContain("ETL");
+    expect(flairKeys).toContain("TI");
+    expect(flairKeys).not.toContain("FatSuppression");
+
+    const dwi = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_dwi_axial")!;
+    const dwiKeys = dwi.parameterSpecs.map((spec) => String(spec.key));
+    expect(dwiKeys).toContain("bValue");
+    expect(dwiKeys).toContain("Bandwidth");
+    expect(dwiKeys).toContain("FatSuppression");
+    expect(dwiKeys).not.toContain("ETL");
+
+    const swi = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_swi_axial")!;
+    const swiKeys = swi.parameterSpecs.map((spec) => String(spec.key));
+    expect(swiKeys).toContain("FlipAngle");
+    expect(swiKeys).toContain("Bandwidth");
+    expect(swiKeys).not.toContain("ETL");
+    expect(swiKeys).not.toContain("FatSuppression");
+
+    const post = BRAIN_PROTOCOLS.find((protocol) => protocol.id === "brain_t1_axial_post")!;
+    expect(post.parameterSpecs.map((spec) => String(spec.key))).toContain("FatSuppression");
   });
 });

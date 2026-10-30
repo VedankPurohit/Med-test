@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { RegionId, CaseId } from '@/features/workstation/types/mri';
+import type { ProtocolStatus } from '@/features/workstation/types/workstation';
 import type {
   WorkstationPhase,
   ProtocolListItem,
@@ -11,6 +12,56 @@ import type { ExamSubmissionSummary, ProtocolSummaryEntry } from '@/features/wor
 const REGION_DEFAULT_FOLDER: Record<RegionId, string[]> = {
   brain: [],
   spine: [],
+  extremity: [],
+};
+
+const CASE_TO_REGION: Record<CaseId, RegionId> = {
+  brain: 'brain',
+  cspine: 'spine',
+  tspine: 'spine',
+  lspine: 'spine',
+  knee: 'extremity',
+};
+
+type QuickStartProtocol = {
+  id: string;
+  label: string;
+  shortName: string;
+  orientation: string;
+  estimatedTime: string;
+};
+
+const QUICK_START_PROTOCOLS: Record<CaseId, QuickStartProtocol[]> = {
+  brain: [
+    { id: 'sagittal-t1-tse', label: 'Sag T1 TSE', shortName: 'Sag T1', orientation: 'SAG', estimatedTime: '2:45' },
+    { id: 'axial-t2-tse', label: 'Ax T2 TSE', shortName: 'Ax T2', orientation: 'TRA', estimatedTime: '2:30' },
+    { id: 'axial-t2-flair', label: 'Ax T2 FLAIR', shortName: 'Ax FLAIR', orientation: 'TRA', estimatedTime: '3:10' },
+    { id: 'axial-dwi', label: 'Ax DWI', shortName: 'Ax DWI', orientation: 'TRA', estimatedTime: '1:30' },
+  ],
+  cspine: [
+    { id: 'cspine_sag_t2', label: 'C-Spine Sagittal T2', shortName: 'Sag T2', orientation: 'SAG', estimatedTime: '3:00' },
+    { id: 'cspine_sag_t1', label: 'C-Spine Sagittal T1', shortName: 'Sag T1', orientation: 'SAG', estimatedTime: '2:45' },
+    { id: 'cspine_ax_t2', label: 'C-Spine Axial T2', shortName: 'Ax T2', orientation: 'TRA', estimatedTime: '3:30' },
+    { id: 'cspine_cor_stir', label: 'C-Spine Coronal STIR', shortName: 'Cor STIR', orientation: 'COR', estimatedTime: '3:15' },
+  ],
+  tspine: [
+    { id: 'tspine_sag_t2', label: 'T-Spine Sagittal T2', shortName: 'Sag T2', orientation: 'SAG', estimatedTime: '3:00' },
+    { id: 'tspine_sag_t1', label: 'T-Spine Sagittal T1', shortName: 'Sag T1', orientation: 'SAG', estimatedTime: '2:45' },
+    { id: 'tspine_ax_t2', label: 'T-Spine Axial T2', shortName: 'Ax T2', orientation: 'TRA', estimatedTime: '3:30' },
+    { id: 'tspine_sag_stir', label: 'T-Spine Sagittal STIR', shortName: 'Sag STIR', orientation: 'SAG', estimatedTime: '3:15' },
+  ],
+  lspine: [
+    { id: 'lspine_sag_t2', label: 'L-Spine Sagittal T2', shortName: 'Sag T2', orientation: 'SAG', estimatedTime: '3:00' },
+    { id: 'lspine_sag_t1', label: 'L-Spine Sagittal T1', shortName: 'Sag T1', orientation: 'SAG', estimatedTime: '2:45' },
+    { id: 'lspine_ax_t2', label: 'L-Spine Axial T2', shortName: 'Ax T2', orientation: 'TRA', estimatedTime: '3:30' },
+    { id: 'lspine_sag_stir', label: 'L-Spine Sagittal STIR', shortName: 'Sag STIR', orientation: 'SAG', estimatedTime: '3:15' },
+  ],
+  knee: [
+    { id: 'knee_sag_pd', label: 'Knee PD Sagittal', shortName: 'Sag PD', orientation: 'SAG', estimatedTime: '3:00' },
+    { id: 'knee_sag_t2_fs', label: 'Knee T2 FS Sagittal', shortName: 'Sag T2 FS', orientation: 'SAG', estimatedTime: '3:15' },
+    { id: 'knee_cor_pd', label: 'Knee PD Coronal', shortName: 'Cor PD', orientation: 'COR', estimatedTime: '2:45' },
+    { id: 'knee_ax_pd', label: 'Knee PD Axial', shortName: 'Ax PD', orientation: 'TRA', estimatedTime: '2:30' },
+  ],
 };
 
 const SUBMISSION_SUMMARY_STORAGE_KEY = 'mriTrainerSubmissionSummaryV1';
@@ -169,6 +220,9 @@ interface WorkstationActions {
   setSubmissionSummary: (summary: ExamSubmissionSummary) => void;
   clearSubmissionSummary: () => void;
   resetExam: () => void;
+  reorderProtocols: (orderedIds: string[]) => void;
+  quickStartBrain: () => void;
+  quickStartRegion: (caseId: CaseId) => void;
 }
 
 export const useWorkstationStore = create<WorkstationState & WorkstationActions>(
@@ -181,13 +235,15 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
     selectRegion: (regionId) => {
       if (regionId === 'spine') {
         set({ phase: 'spine-subregion', regionId: 'spine', caseId: null, ...getCleanExamState('spine') });
+      } else if (regionId === 'extremity') {
+        get().quickStartRegion('knee');
       } else {
-        set({ phase: 'exam-setup', regionId, caseId: 'brain', ...getCleanExamState(regionId) });
+        get().quickStartRegion('brain');
       }
     },
 
     selectSubRegion: (caseId) => {
-      set({ phase: 'exam-setup', caseId, ...getCleanExamState(get().regionId) });
+      get().quickStartRegion(caseId);
     },
 
     goBackToRegionSelect: () => {
@@ -207,6 +263,7 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
             orientation: protocol.orientation,
             region: protocol.region,
             status: 'pending',
+            estimatedTime: protocol.estimatedTime,
           },
         ],
       });
@@ -341,6 +398,47 @@ export const useWorkstationStore = create<WorkstationState & WorkstationActions>
     resetExam: () => {
       const { regionId } = get();
       set({ phase: 'exam-setup', ...getCleanExamState(regionId) });
+    },
+
+    reorderProtocols: (orderedIds) => {
+      const { addedProtocols } = get();
+      const idToProtocol = new Map(addedProtocols.map((p) => [p.protocolId, p]));
+      const reordered = orderedIds
+        .map((id) => idToProtocol.get(id))
+        .filter((p): p is ProtocolListItem => p !== undefined);
+      // Append any protocols not in the ordered list (safety net)
+      for (const p of addedProtocols) {
+        if (!orderedIds.includes(p.protocolId)) {
+          reordered.push(p);
+        }
+      }
+      set({ addedProtocols: reordered });
+    },
+
+    quickStartRegion: (caseId: CaseId) => {
+      const regionId = CASE_TO_REGION[caseId];
+      const protocols = QUICK_START_PROTOCOLS[caseId];
+
+      set({
+        ...getCleanExamState(regionId),
+        regionId,
+        caseId,
+        addedProtocols: protocols.map((p) => ({
+          protocolId: p.id,
+          label: p.label,
+          shortName: p.shortName,
+          orientation: p.orientation,
+          region: regionId,
+          status: 'pending' as ProtocolStatus,
+          estimatedTime: p.estimatedTime,
+        })),
+        examStartTime: Date.now(),
+        phase: 'protocols-confirmed',
+      });
+    },
+
+    quickStartBrain: () => {
+      get().quickStartRegion('brain');
     },
   }),
 );

@@ -4,7 +4,9 @@ import { CSPINE_PROTOCOLS } from "@/features/planner/data/protocols/cspine";
 const REQUIRED_PROTOCOL_IDS = [
   "cspine_sag_t2",
   "cspine_sag_t1",
-  "cspine_ax_t2"
+  "cspine_ax_t2",
+  "cspine_cor_stir",
+  "cspine_ax_t1_post"
 ] as const;
 
 describe("cervical spine protocols", () => {

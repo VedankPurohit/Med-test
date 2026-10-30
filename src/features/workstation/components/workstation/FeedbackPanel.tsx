@@ -1,10 +1,53 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { haveVisitedAllSelectedProtocols } from "@/features/workstation/lib/examSummary";
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
+import { useGuidanceStore } from '@/features/guidance/stores/useGuidanceStore';
+import { useVolume } from '@/features/volume/hooks/useVolume';
+import { ScanResultPanel } from '@/features/guidance/components/ScanResultPanel';
 import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
+
+function barColor(percent: number): string {
+  if (percent >= 75) return 'var(--fb-good)';
+  if (percent >= 55) return 'var(--fb-warn)';
+  return 'var(--fb-bad)';
+}
+
+function CoachingBar({ label, percent, coaching }: { label: string; percent: number; coaching: string | null }) {
+  const color = barColor(percent);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>
+          {label}
+        </span>
+        <span className="text-[9px] font-semibold tabular-nums" style={{ color }}>
+          {percent}%
+        </span>
+      </div>
+      <div
+        className="rounded-full overflow-hidden"
+        style={{ height: 4, background: 'var(--chrome-surface-hover)' }}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${Math.max(percent, 2)}%`,
+            background: color,
+            transition: 'width 0.4s ease',
+          }}
+        />
+      </div>
+      {coaching && (
+        <div className="text-[7px] mt-0.5 leading-snug" style={{ color: 'var(--text-muted)' }}>
+          {coaching}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
   const router = useRouter();
@@ -12,18 +55,68 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
   const lastScore = planner.lastScore;
   const setRightPanelTab = useWorkstationStore((s) => s.setRightPanelTab);
   const addedProtocols = useWorkstationStore((s) => s.addedProtocols);
+  const activeIndex = useWorkstationStore((s) => s.activeProtocolIndex);
+  const activateProtocol = useWorkstationStore((s) => s.activateProtocol);
   const setSubmissionSummary = useWorkstationStore((s) => s.setSubmissionSummary);
+  const showCorrectOverlay = useGuidanceStore((s) => s.showCorrectOverlay);
   const allVisited = useMemo(() => haveVisitedAllSelectedProtocols(addedProtocols), [addedProtocols]);
   const remainingProtocols = useMemo(
     () => addedProtocols.filter((protocol) => protocol.status === "pending").length,
     [addedProtocols]
   );
+  const volumeUrl = bridge.resolved?.caseConfig.volumeUrl ?? null;
+  const { volume } = useVolume(volumeUrl);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [showScanResult, setShowScanResult] = useState(false);
+
+  // Reset local state when active protocol changes
+  useEffect(() => {
+    setAccepted(false);
+    setScanning(false);
+    setShowScanResult(false);
+  }, [planner.currentProtocol?.id]);
+
+  const findings = lastScore?.findings ?? [];
+  const canAccept = lastScore?.pass === true && !accepted;
+  const canRunScan = accepted && !scanning;
 
   const handleCheck = () => {
+    setAccepted(false);
+    setScanning(false);
     void planner.checkPlanning();
     setRightPanelTab('feedback');
   };
+
+  const handleAccept = useCallback(() => {
+    setAccepted(true);
+  }, []);
+
+  const handleRunScan = useCallback(() => {
+    setScanning(true);
+    // Brief scanning animation then show results
+    setTimeout(() => {
+      setScanning(false);
+      setShowScanResult(true);
+    }, 1500);
+  }, []);
+
+  const handleCloseScanResult = useCallback(() => {
+    setShowScanResult(false);
+    setAccepted(false);
+    // Find next pending protocol
+    const nextIndex = addedProtocols.findIndex(
+      (p, i) => i !== activeIndex && (p.status === 'pending' || p.status === 'planning')
+    );
+    if (nextIndex >= 0) {
+      activateProtocol(nextIndex);
+    }
+  }, [addedProtocols, activeIndex, activateProtocol]);
+
+  const handleShowCorrectPlanning = useCallback(() => {
+    showCorrectOverlay();
+  }, [showCorrectOverlay]);
 
   const handleSubmitExam = async () => {
     try {
@@ -60,26 +153,31 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
     <div className="h-full min-h-0 flex flex-col overflow-hidden" style={{ background: 'var(--chrome-surface)' }}>
       {/* Action buttons */}
       <div
-        className="flex gap-1 px-2 py-1.5 shrink-0"
+        className="flex gap-1.5 px-2.5 py-2 shrink-0"
         style={{ borderBottom: '1px solid var(--chrome-border)' }}
       >
         <button
           onClick={() => void handleCheck()}
           disabled={planner.isChecking}
-          className="px-2 py-0.5 rounded text-[8px] cursor-pointer transition-colors"
+          className="btn-sm"
           style={{
             background: planner.isChecking ? "var(--chrome-surface-raised)" : 'var(--accent-blue-dim)',
             color: planner.isChecking ? "var(--text-muted)" : 'var(--accent-blue)',
             border: planner.isChecking ? "1px solid var(--chrome-border)" : '1px solid rgba(37,99,235,0.3)',
-            cursor: planner.isChecking ? "not-allowed" : "pointer"
+            cursor: planner.isChecking ? "not-allowed" : "pointer",
+            fontWeight: 500,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--accent-blue)';
-            e.currentTarget.style.color = '#fff';
+            if (!planner.isChecking) {
+              e.currentTarget.style.background = 'var(--accent-blue)';
+              e.currentTarget.style.color = '#fff';
+            }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--accent-blue-dim)';
-            e.currentTarget.style.color = 'var(--accent-blue)';
+            if (!planner.isChecking) {
+              e.currentTarget.style.background = 'var(--accent-blue-dim)';
+              e.currentTarget.style.color = 'var(--accent-blue)';
+            }
           }}
         >
           {planner.isChecking ? "Checking..." : "Check Planning"}
@@ -87,12 +185,7 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
         <button
           onClick={planner.resetPlan}
           type="button"
-          className="px-2 py-0.5 rounded text-[8px] cursor-pointer transition-colors"
-          style={{
-            background: 'transparent',
-            color: 'var(--text-muted)',
-            border: '1px solid var(--chrome-border)',
-          }}
+          className="btn-sm btn-ghost"
         >
           Reset
         </button>
@@ -100,13 +193,13 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
           onClick={() => void handleSubmitExam()}
           type="button"
           disabled={!allVisited}
-          className="px-2 py-0.5 rounded text-[8px] transition-colors ml-auto"
+          className={`btn-sm ml-auto${allVisited ? ' animate-pulse-soft' : ''}`}
           style={{
-            background: allVisited ? "rgba(22, 163, 74, 0.15)" : "transparent",
+            background: allVisited ? "rgba(22, 163, 74, 0.25)" : "transparent",
             color: allVisited ? "var(--fb-good)" : "var(--text-muted)",
-            border: allVisited ? "1px solid rgba(22,163,74,0.35)" : "1px solid var(--chrome-border)",
+            border: allVisited ? "1px solid rgba(22,163,74,0.5)" : "1px solid var(--chrome-border)",
             cursor: allVisited ? "pointer" : "not-allowed",
-            opacity: allVisited ? 1 : 0.7
+            fontWeight: allVisited ? 600 : 500,
           }}
         >
           Submit Session
@@ -114,10 +207,31 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
       </div>
 
       {/* Score display */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1.5">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2">
         {submitError && (
-          <div className="mb-2 text-[8px]" style={{ color: "var(--fb-bad)" }}>
-            {submitError}
+          <div
+            className="mb-2 px-2 py-1.5 rounded text-[8px] flex items-center gap-1.5"
+            style={{
+              background: 'rgba(248, 81, 73, 0.08)',
+              border: '1px solid rgba(248, 81, 73, 0.2)',
+              color: 'var(--fb-bad)',
+            }}
+          >
+            <span style={{ fontSize: 11, lineHeight: 1 }}>!</span>
+            <span className="flex-1">{submitError}</span>
+            <button
+              onClick={() => void handleSubmitExam()}
+              className="text-[7px] underline cursor-pointer"
+              style={{ background: 'none', border: 'none', color: 'inherit', fontFamily: 'inherit' }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {allVisited && (
+          <div className="mb-2 text-[8px] font-semibold" style={{ color: "var(--fb-good)" }}>
+            All protocols complete
           </div>
         )}
 
@@ -130,59 +244,123 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
         {lastScore ? (
           <>
             {/* Pass/fail badge */}
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="mb-2.5">
               <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ background: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)' }}
-              />
-              <span
-                className="text-[11px] font-semibold"
-                style={{ color: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)' }}
+                className="score-pill"
+                style={{
+                  background: lastScore.pass ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.1)',
+                  color: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)',
+                }}
               >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: lastScore.pass ? 'var(--fb-good)' : 'var(--fb-bad)' }}
+                />
                 {lastScore.pass ? 'PASS' : 'NOT YET'} — {lastScore.finalScorePercent}%
               </span>
             </div>
 
-            {/* Component scores */}
-            <div className="grid grid-cols-2 gap-1 mb-2">
-              {[
-                { label: 'Position', value: lastScore.componentScores.positionPercent },
-                { label: 'Coverage', value: lastScore.componentScores.coveragePercent },
-                { label: 'Angulation', value: lastScore.componentScores.angulationPercent },
-                { label: 'Parameters', value: lastScore.componentScores.parametersPercent },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div className="text-[7px] uppercase" style={{ color: 'var(--text-muted)' }}>
-                    {item.label}
-                  </div>
-                  <div
-                    className="text-[10px]"
-                    style={{
-                      color:
-                        item.value >= 75
-                          ? 'var(--fb-good)'
-                          : item.value >= 55
-                            ? 'var(--fb-warn)'
-                            : 'var(--fb-bad)',
-                    }}
-                  >
-                    {item.value}%
-                  </div>
-                </div>
-              ))}
+            {/* Coaching bars */}
+            <div className="space-y-1.5 mb-2.5">
+              <CoachingBar
+                label="POSITION"
+                percent={lastScore.componentScores.positionPercent}
+                coaching={findings.find((f) => f.code === 'position_off')?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="ANGULATION"
+                percent={lastScore.componentScores.angulationPercent}
+                coaching={findings.find((f) => f.code === 'angle_wrong')?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="COVERAGE"
+                percent={lastScore.componentScores.coveragePercent}
+                coaching={findings.find((f) => f.code === 'fov_too_small')?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="PARAMETERS"
+                percent={lastScore.componentScores.parametersPercent}
+                coaching={findings.find((f) => f.code.startsWith('param_mismatch_'))?.suggestion ?? null}
+              />
+              <CoachingBar
+                label="OVERALL"
+                percent={lastScore.finalScorePercent}
+                coaching={null}
+              />
             </div>
 
-            {/* Feedback items */}
-            <div className="space-y-1">
-              {lastScore.feedback.map((line, i) => (
-                <div
-                  key={`${i}-${line}`}
-                  className="text-[9px] leading-snug"
-                  style={{ color: 'var(--text-secondary)' }}
+            {/* Midline / Symmetry findings */}
+            {findings.filter((f) => f.code === 'midline_off' || f.code === 'symmetry_off').map((f, i) => (
+              <div
+                key={`extra-${i}-${f.code}`}
+                className="text-[8px] leading-snug rounded px-2 py-1 mb-1.5"
+                style={{
+                  background: f.severity === 'error' ? 'rgba(248,81,73,0.08)' : 'rgba(210,153,34,0.08)',
+                  borderLeft: `2px solid ${f.severity === 'error' ? 'var(--fb-bad)' : 'var(--fb-warn)'}`,
+                }}
+              >
+                <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{f.title}</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{f.message}</div>
+                {f.suggestion && (
+                  <div style={{ color: 'var(--text-muted)', marginTop: 1 }}>{f.suggestion}</div>
+                )}
+              </div>
+            ))}
+
+            {/* Accept / Run Scan / Show Correct Planning buttons */}
+            <div className="flex gap-1.5 mt-2.5 flex-wrap">
+              {canAccept && (
+                <button
+                  onClick={handleAccept}
+                  className="btn-sm"
+                  style={{
+                    background: 'rgba(63,185,80,0.15)',
+                    color: 'var(--fb-good)',
+                    border: '1px solid rgba(63,185,80,0.35)',
+                  }}
                 >
-                  {line}
-                </div>
-              ))}
+                  Accept
+                </button>
+              )}
+              {canRunScan && (
+                <button
+                  onClick={handleRunScan}
+                  className="btn-sm"
+                  style={{
+                    background: 'rgba(37,99,235,0.15)',
+                    color: 'var(--accent-blue)',
+                    border: '1px solid rgba(37,99,235,0.35)',
+                  }}
+                >
+                  Run Scan
+                </button>
+              )}
+              {scanning && (
+                <span className="text-[8px] animate-pulse-soft flex items-center" style={{ color: 'var(--accent-blue)' }}>
+                  Scanning...
+                </span>
+              )}
+              {lastScore && !lastScore.pass && (
+                <>
+                  <button
+                    onClick={handleShowCorrectPlanning}
+                    className="btn-sm"
+                    style={{
+                      background: 'rgba(210,153,34,0.12)',
+                      color: 'var(--fb-warn)',
+                      border: '1px solid rgba(210,153,34,0.3)',
+                    }}
+                  >
+                    Show Correct Planning
+                  </button>
+                  <button
+                    onClick={planner.resetPlan}
+                    className="btn-sm btn-ghost"
+                  >
+                    Try Again
+                  </button>
+                </>
+              )}
             </div>
           </>
         ) : (
@@ -198,6 +376,14 @@ export default function FeedbackPanel({ bridge }: { bridge: PlannerBridge }) {
           </div>
         )}
       </div>
+
+      <ScanResultPanel
+        open={showScanResult}
+        volume={volume}
+        box={planner.box}
+        protocolLabel={planner.currentProtocol?.label ?? ""}
+        onClose={handleCloseScanResult}
+      />
     </div>
   );
 }

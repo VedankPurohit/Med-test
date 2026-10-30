@@ -214,8 +214,8 @@ export const PlannerShell = () => {
                 Axial Tilt
                 <input
                   type="range"
-                  min="-45"
-                  max="45"
+                  min="-90"
+                  max="90"
                   step="1"
                   value={planner.box?.rotation.rz ?? 0}
                   onChange={(event) => planner.changeRotation("rz", Number(event.target.value))}
@@ -225,8 +225,8 @@ export const PlannerShell = () => {
                 Sagittal Tilt
                 <input
                   type="range"
-                  min="-45"
-                  max="45"
+                  min="-90"
+                  max="90"
                   step="1"
                   value={planner.box?.rotation.rx ?? 0}
                   onChange={(event) => planner.changeRotation("rx", Number(event.target.value))}
@@ -236,8 +236,8 @@ export const PlannerShell = () => {
                 Coronal Tilt
                 <input
                   type="range"
-                  min="-45"
-                  max="45"
+                  min="-90"
+                  max="90"
                   step="1"
                   value={planner.box?.rotation.ry ?? 0}
                   onChange={(event) => planner.changeRotation("ry", Number(event.target.value))}
@@ -330,7 +330,7 @@ export const PlannerShell = () => {
               {(["axial", "sagittal", "coronal"] as ViewId[]).map((viewId) => (
                 <figure key={viewId}>
                   <figcaption>
-                    {viewId[0].toUpperCase() + viewId.slice(1)} {VIEW_CONFIG[viewId].editable ? "(editable)" : "(derived)"}
+                    {viewId[0].toUpperCase() + viewId.slice(1)}
                   </figcaption>
                   <LocalizerCanvas
                     viewId={viewId}
