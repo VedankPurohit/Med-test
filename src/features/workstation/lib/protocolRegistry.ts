@@ -9,11 +9,8 @@ const EXAMCARD_TO_PLANNER: Record<string, { caseId: CaseId; plannerProtocolId: s
   // Brain
   'axial-t2-tse':          { caseId: 'brain', plannerProtocolId: 'brain_t2_axial' },
   'axial-t2-flair':        { caseId: 'brain', plannerProtocolId: 'brain_t2_flair_axial' },
-  'axial-t1-tse':          { caseId: 'brain', plannerProtocolId: 'brain_t1_axial_se' },
   'sagittal-t1-tse':       { caseId: 'brain', plannerProtocolId: 'brain_t1_sagittal' },
-  'coronal-t1-tse':        { caseId: 'brain', plannerProtocolId: 'brain_t1_se_coronal' },
   'axial-dwi':             { caseId: 'brain', plannerProtocolId: 'brain_dwi_axial' },
-  'axial-swi':             { caseId: 'brain', plannerProtocolId: 'brain_swi_axial' },
   // Dorsal spine (thoracic)
   'spine-sagittal-t2-tse': { caseId: 'tspine', plannerProtocolId: 'tspine_sag_t2' },
   // Dorsal spine (lumbar)

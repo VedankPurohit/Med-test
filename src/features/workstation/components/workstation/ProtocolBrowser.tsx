@@ -1,7 +1,7 @@
 'use client';
 
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
-import { getExamCards } from '@/features/workstation/lib/examcards';
+import { getPlannableExamCards } from '@/features/workstation/lib/examcards';
 import { isFolder, isProtocol } from '@/features/workstation/types/workstation';
 import type { ExamCardEntry, ExamCardProtocol } from '@/features/workstation/types/workstation';
 import type { PlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
@@ -209,6 +209,8 @@ export default function ProtocolBrowser({ bridge }: { bridge?: PlannerBridge }) 
   const browserOpen = useWorkstationStore((s) => s.browserOpen);
   const setBrowserOpen = useWorkstationStore((s) => s.setBrowserOpen);
   const phase = useWorkstationStore((s) => s.phase);
+  const caseId = useWorkstationStore((s) => s.caseId);
+  const cards = getPlannableExamCards(caseId);
 
   const showParams = phase === 'survey-complete' || phase === 'protocol-active';
 
@@ -264,7 +266,7 @@ export default function ProtocolBrowser({ bridge }: { bridge?: PlannerBridge }) 
         </div>
 
         <div className="flex-1 overflow-y-auto py-1">
-          {getExamCards().map((folder) => (
+          {cards.map((folder) => (
             <FolderRow key={folder.id} entry={folder} />
           ))}
         </div>
@@ -273,9 +275,6 @@ export default function ProtocolBrowser({ bridge }: { bridge?: PlannerBridge }) 
   }
 
   if (!browserOpen) return null;
-
-  const cards = getExamCards();
-
   return (
     <div
       className="flex flex-col shrink-0 animate-slide-up"

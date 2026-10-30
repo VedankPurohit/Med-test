@@ -15,6 +15,7 @@ const makeScore = (protocolId: string, finalScorePercent: number, pass: boolean)
   finalScorePercent,
   pass,
   feedback: pass ? ["Good alignment."] : ["Re-center on anatomy."],
+  findings: [],
   componentScores: {
     positionPercent: finalScorePercent,
     coveragePercent: finalScorePercent,
@@ -53,7 +54,7 @@ describe("examSummary", () => {
         shortName: "Ax T2",
         orientation: "TRA",
         region: "brain",
-        status: "pending"
+        status: "not_planned"
       },
       {
         protocolId: "axial-dwi",
@@ -61,7 +62,7 @@ describe("examSummary", () => {
         shortName: "Ax DWI",
         orientation: "TRA",
         region: "brain",
-        status: "active"
+        status: "planning"
       }
     ];
     expect(haveVisitedAllSelectedProtocols(protocols)).toBe(false);
@@ -83,7 +84,7 @@ describe("examSummary", () => {
         shortName: "Ax DWI",
         orientation: "TRA",
         region: "brain",
-        status: "active"
+        status: "error"
       }
     ];
 

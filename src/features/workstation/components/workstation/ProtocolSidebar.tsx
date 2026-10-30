@@ -5,10 +5,11 @@ import { MOCK_PATIENT, MOCK_EXAM } from '@/features/workstation/lib/mockData';
 import type { ProtocolStatus } from '@/features/workstation/types/workstation';
 
 const STATUS_COLORS: Record<ProtocolStatus, string> = {
-  pending: 'var(--text-muted)',
-  active: 'var(--plan-orange)',
+  not_planned: 'var(--text-muted)',
+  planning: 'var(--plan-orange)',
+  accepted: 'var(--accent-blue)',
   completed: 'var(--fb-good)',
-  skipped: 'var(--fb-neutral)',
+  error: 'var(--fb-bad)',
 };
 
 export default function ProtocolSidebar() {
@@ -81,7 +82,7 @@ export default function ProtocolSidebar() {
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{
                     background: STATUS_COLORS[protocol.status],
-                    boxShadow: protocol.status === 'active'
+                    boxShadow: protocol.status === 'planning'
                       ? '0 0 6px var(--plan-orange)'
                       : 'none',
                   }}
@@ -106,7 +107,7 @@ export default function ProtocolSidebar() {
                     color: 'var(--text-muted)',
                   }}
                 >
-                  {protocol.orientation}
+                  {protocol.status.replace('_', ' ')}
                 </span>
 
                 {canRemove && (

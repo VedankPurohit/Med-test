@@ -31,6 +31,7 @@ const makeBody = () => ({
         finalScorePercent: 82,
         pass: true,
         feedback: ["Good."],
+        findings: [],
         componentScores: {
           positionPercent: 80,
           coveragePercent: 84,

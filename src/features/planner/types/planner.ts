@@ -60,6 +60,18 @@ export type ProtocolParameterSpec = {
   weight?: number;
 };
 
+export type ProtocolTeachingHighlight = {
+  key: ParameterKey;
+  explanation: string;
+};
+
+export type ProtocolTeachingContent = {
+  purpose: string;
+  planningHint: string;
+  planningChecklist?: string[];
+  parameterHighlights?: ProtocolTeachingHighlight[];
+};
+
 export type ProtocolComponentWeights = {
   position: number;
   coverage: number;
@@ -94,8 +106,10 @@ export type ProtocolConfig = {
   initial: ProtocolTarget;
   tolerances: ProtocolTolerance;
   parameterSpecs: ProtocolParameterSpec[];
+  workflowOrder?: number;
   scoringProfile?: ProtocolScoringProfile;
   interactionRules?: ProtocolInteractionRules;
+  teaching?: ProtocolTeachingContent;
   clinicalNotes?: string[];
 };
 
@@ -123,6 +137,14 @@ export type PlannerScore = {
   finalScorePercent: number;
   pass: boolean;
   feedback: string[];
+  findings: Array<{
+    code: string;
+    severity: "error" | "warning";
+    title: string;
+    message: string;
+    suggestion?: string;
+    relatedParameter?: string;
+  }>;
   componentScores: {
     positionPercent: number;
     coveragePercent: number;

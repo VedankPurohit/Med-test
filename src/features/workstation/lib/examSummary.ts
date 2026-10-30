@@ -49,7 +49,7 @@ export const haveVisitedAllSelectedProtocols = (protocols: ProtocolListItem[]): 
   if (protocols.length === 0) {
     return false;
   }
-  return protocols.every((protocol) => protocol.status !== "pending");
+  return protocols.every((protocol) => protocol.status !== "not_planned");
 };
 
 export const buildExamSubmissionSummary = (
@@ -92,7 +92,7 @@ export const buildExamSubmissionSummary = (
 
   const scoredEntries = entries.filter((entry) => entry.scorePercent !== null);
   const passedProtocols = entries.filter((entry) => entry.pass === true).length;
-  const visitedProtocols = protocols.filter((protocol) => protocol.status !== "pending").length;
+  const visitedProtocols = protocols.filter((protocol) => protocol.status !== "not_planned").length;
 
   const averageScorePercent = scoredEntries.length > 0
     ? Math.round(

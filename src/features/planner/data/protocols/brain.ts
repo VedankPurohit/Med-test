@@ -14,7 +14,8 @@ const DWI_SPECS = [
 export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
   makeProtocol({
     id: "brain_t1_sagittal",
-    label: "Brain T1 Sagittal",
+    label: "T1 Sagittal",
+    workflowOrder: 1,
     target: makeTarget(
       { x: 0.0, y: -0.06, z: 0.08 },
       { x: 0.74, y: 1.0, z: 0.6 },
@@ -29,6 +30,20 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
     ),
     tolerances: { center: 0.24, size: 0.22, rotation: 18, param: 0.22 },
     parameterSpecs: STANDARD_SPECS,
+    teaching: {
+      purpose: "Establish a reliable midline reference and full head coverage before the axial sequences.",
+      planningHint: "Center the slab on the brain midline and keep the sagittal plane tracking the corpus callosum and brainstem.",
+      planningChecklist: [
+        "Cover frontal pole through occipital pole.",
+        "Keep the slab centered near isocenter.",
+        "Avoid unnecessary obliquity."
+      ],
+      parameterHighlights: [
+        { key: "TR", explanation: "Use a short TR so the sequence keeps T1 weighting." },
+        { key: "TE", explanation: "Keep TE short to avoid drifting toward T2-style contrast." },
+        { key: "FOV", explanation: "FOV must include the whole head profile without clipping." }
+      ]
+    },
     clinicalNotes: [
       "Keep midline orientation through corpus callosum and brainstem.",
       "Cover from frontal sinus margin through occipital pole."
@@ -36,7 +51,8 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
   }),
   makeProtocol({
     id: "brain_t2_axial",
-    label: "Brain T2 Axial",
+    label: "T2 Axial",
+    workflowOrder: 2,
     target: makeTarget(
       { x: 0.03, y: -0.05, z: 0.12 },
       { x: 0.94, y: 0.76, z: 0.56 },
@@ -59,36 +75,29 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
     ],
     tolerances: { center: 0.22, size: 0.21, rotation: 16, param: 0.22 },
     parameterSpecs: STANDARD_SPECS,
+    teaching: {
+      purpose: "Demonstrate fluid-sensitive whole-brain coverage for edema, mass effect, and routine pathology review.",
+      planningHint: "Plan parallel to the AC-PC region and cover vertex through posterior fossa without dropping into the neck.",
+      planningChecklist: [
+        "Keep the routine axial brain plane.",
+        "Cover cortex, ventricles, and posterior fossa.",
+        "Stay centered instead of drifting inferiorly."
+      ],
+      parameterHighlights: [
+        { key: "TR", explanation: "Long TR preserves T2 contrast." },
+        { key: "TE", explanation: "Long TE keeps the sequence fluid-sensitive." },
+        { key: "Slices", explanation: "Slice count must support full head coverage." }
+      ]
+    },
     clinicalNotes: [
       "Prescribe parallel to AC-PC region for supratentorial coverage.",
       "Ensure full cortical and ventricular coverage without excessive neck inclusion."
     ]
   }),
   makeProtocol({
-    id: "brain_t1_axial_se",
-    label: "Brain T1 Axial SE",
-    target: makeTarget(
-      { x: 0.03, y: -0.05, z: 0.11 },
-      { x: 0.94, y: 0.76, z: 0.56 },
-      { rx: -5, ry: 2, rz: 9 },
-      makeParams(620, 15, 220, 24, 5, 0.5)
-    ),
-    initial: makeTarget(
-      { x: -0.2, y: 0.14, z: 0.32 },
-      { x: 0.65, y: 0.56, z: 0.42 },
-      { rx: 7, ry: -6, rz: -10 },
-      makeParams(900, 25, 250, 18, 4, 1.0)
-    ),
-    tolerances: { center: 0.22, size: 0.2, rotation: 16, param: 0.2 },
-    parameterSpecs: STANDARD_SPECS,
-    clinicalNotes: [
-      "Maintain standard axial plane alignment for pre-contrast T1 comparisons.",
-      "Avoid inferior neck inclusion while preserving full supratentorial coverage."
-    ]
-  }),
-  makeProtocol({
     id: "brain_t2_flair_axial",
-    label: "Brain T2 FLAIR Axial",
+    label: "FLAIR Axial",
+    workflowOrder: 3,
     target: makeTarget(
       { x: 0.03, y: -0.04, z: 0.11 },
       { x: 0.95, y: 0.78, z: 0.58 },
@@ -103,6 +112,20 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
     ),
     tolerances: { center: 0.21, size: 0.2, rotation: 15, param: 0.2 },
     parameterSpecs: FLAIR_SPECS,
+    teaching: {
+      purpose: "Suppress CSF while preserving lesion conspicuity for routine brain review.",
+      planningHint: "Mirror the T2 axial plane so lesion comparison stays consistent across sequences.",
+      planningChecklist: [
+        "Use the same whole-brain coverage strategy as T2 axial.",
+        "Keep the routine axial orientation.",
+        "Do not undershoot superior cortex or posterior fossa."
+      ],
+      parameterHighlights: [
+        { key: "TR", explanation: "FLAIR still needs a long TR for T2-style contrast." },
+        { key: "TE", explanation: "A long TE keeps fluid-sensitive signal behavior." },
+        { key: "TI", explanation: "TI is the teaching-critical parameter because it suppresses CSF." }
+      ]
+    },
     clinicalNotes: [
       "FLAIR axial slab usually mirrors T2 axial plane with robust supratentorial coverage.",
       "This protocol includes TI scoring in addition to core geometric parameters."
@@ -110,7 +133,8 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
   }),
   makeProtocol({
     id: "brain_dwi_axial",
-    label: "Brain DWI Axial",
+    label: "DWI",
+    workflowOrder: 4,
     target: makeTarget(
       { x: 0.03, y: -0.04, z: 0.1 },
       { x: 0.94, y: 0.78, z: 0.55 },
@@ -125,119 +149,23 @@ export const BRAIN_PROTOCOLS: ProtocolConfig[] = [
     ),
     tolerances: { center: 0.2, size: 0.2, rotation: 15, param: 0.2 },
     parameterSpecs: DWI_SPECS,
+    teaching: {
+      purpose: "Evaluate diffusion restriction for acute infarct and other high-priority pathology.",
+      planningHint: "Keep the slab aligned with the routine axial brain plane and avoid unnecessary inferior coverage that increases distortion.",
+      planningChecklist: [
+        "Cover the whole brain with minimal neck inclusion.",
+        "Keep slice gap very small.",
+        "Match the routine axial orientation for comparison."
+      ],
+      parameterHighlights: [
+        { key: "TE", explanation: "TE is often constrained but still affects diffusion image quality." },
+        { key: "SliceGap", explanation: "Small gap reduces the chance of missing focal restriction between slices." },
+        { key: "bValue", explanation: "b-value is the core diffusion teaching parameter in this sequence." }
+      ]
+    },
     clinicalNotes: [
       "DWI axial should avoid inferior non-brain inclusion while covering whole brain.",
       "Keep slab aligned with routine axial brain plane for diffusion comparability."
-    ]
-  }),
-  makeProtocol({
-    id: "brain_swi_axial",
-    label: "Brain SWI Axial",
-    target: makeTarget(
-      { x: 0.04, y: -0.03, z: 0.1 },
-      { x: 0.95, y: 0.8, z: 0.6 },
-      { rx: -4, ry: 2, rz: 8 },
-      makeParams(45, 28, 220, 48, 2, 0.0)
-    ),
-    initial: makeTarget(
-      { x: -0.17, y: 0.15, z: 0.27 },
-      { x: 0.7, y: 0.6, z: 0.43 },
-      { rx: 5, ry: -6, rz: -8 },
-      makeParams(70, 18, 240, 30, 3, 0.8)
-    ),
-    tolerances: { center: 0.22, size: 0.2, rotation: 15, param: 0.2 },
-    parameterSpecs: STANDARD_SPECS,
-    clinicalNotes: [
-      "Thin contiguous slices are preferred for venous and microhemorrhage conspicuity.",
-      "Keep slab parallel to routine axial brain acquisition for correlation."
-    ]
-  }),
-  makeProtocol({
-    id: "brain_t1_se_coronal",
-    label: "Brain T1 SE Coronal",
-    target: makeTarget(
-      { x: 0.02, y: -0.02, z: 0.07 },
-      { x: 0.84, y: 0.68, z: 0.75 },
-      { rx: -12, ry: -4, rz: 2 },
-      makeParams(600, 12, 220, 22, 4, 0.4)
-    ),
-    initial: makeTarget(
-      { x: -0.15, y: 0.11, z: -0.24 },
-      { x: 0.66, y: 0.6, z: 0.44 },
-      { rx: 9, ry: 7, rz: 11 },
-      makeParams(850, 20, 250, 18, 5, 1.0)
-    ),
-    tolerances: { center: 0.23, size: 0.2, rotation: 17, param: 0.22 },
-    parameterSpecs: STANDARD_SPECS,
-    clinicalNotes: [
-      "Coronal SE T1 should center through temporal horns and mesial temporal structures.",
-      "Avoid strong obliquity unless protocol specifically requests it."
-    ]
-  }),
-  makeProtocol({
-    id: "brain_t2_coronal",
-    label: "Brain T2 Coronal",
-    target: makeTarget(
-      { x: 0.02, y: -0.02, z: 0.07 },
-      { x: 0.86, y: 0.7, z: 0.76 },
-      { rx: -11, ry: -4, rz: 2 },
-      makeParams(4200, 100, 220, 24, 4, 0.4)
-    ),
-    initial: makeTarget(
-      { x: -0.16, y: 0.1, z: -0.22 },
-      { x: 0.64, y: 0.58, z: 0.44 },
-      { rx: 8, ry: 7, rz: 10 },
-      makeParams(3200, 78, 250, 18, 5, 1.0)
-    ),
-    tolerances: { center: 0.23, size: 0.2, rotation: 17, param: 0.22 },
-    parameterSpecs: STANDARD_SPECS,
-    clinicalNotes: [
-      "Coronal T2 should include temporal lobes through vertex with symmetric coverage.",
-      "Tilt only as needed to maintain consistent bilateral anatomy coverage."
-    ]
-  }),
-  makeProtocol({
-    id: "brain_t2_sagittal",
-    label: "Brain T2 Sagittal",
-    target: makeTarget(
-      { x: 0.0, y: -0.05, z: 0.08 },
-      { x: 0.72, y: 0.98, z: 0.62 },
-      { rx: 14, ry: 1, rz: -2 },
-      makeParams(4200, 95, 240, 24, 4, 0.5)
-    ),
-    initial: makeTarget(
-      { x: 0.18, y: 0.18, z: -0.2 },
-      { x: 0.52, y: 0.7, z: 0.35 },
-      { rx: -6, ry: -6, rz: 8 },
-      makeParams(3200, 70, 260, 16, 5, 1.2)
-    ),
-    tolerances: { center: 0.24, size: 0.22, rotation: 18, param: 0.22 },
-    parameterSpecs: STANDARD_SPECS,
-    clinicalNotes: [
-      "Midline sagittal orientation should track corpus callosum and posterior fossa profile.",
-      "Ensure anterior frontal pole to occipital pole coverage."
-    ]
-  }),
-  makeProtocol({
-    id: "brain_t1_axial_post",
-    label: "Brain T1 Axial Post-Contrast",
-    target: makeTarget(
-      { x: 0.03, y: -0.05, z: 0.11 },
-      { x: 0.94, y: 0.76, z: 0.56 },
-      { rx: -5, ry: 2, rz: 9 },
-      makeParams(620, 15, 220, 24, 5, 0.5)
-    ),
-    initial: makeTarget(
-      { x: -0.2, y: 0.15, z: 0.3 },
-      { x: 0.66, y: 0.57, z: 0.43 },
-      { rx: 7, ry: -6, rz: -10 },
-      makeParams(920, 24, 250, 18, 4, 1.0)
-    ),
-    tolerances: { center: 0.22, size: 0.2, rotation: 16, param: 0.2 },
-    parameterSpecs: STANDARD_SPECS,
-    clinicalNotes: [
-      "Planning geometry should mirror pre-contrast axial T1 for interval comparison.",
-      "Maintain full intracranial coverage in post-contrast series."
     ]
   })
 ];

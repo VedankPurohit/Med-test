@@ -9,12 +9,8 @@ const EXAM_CARDS: ExamCardFolder[] = [
     children: [
       { id: 'axial-t2-tse', label: 'Ax T2 TSE', shortName: 'Ax T2', orientation: 'TRA', region: 'brain', estimatedTime: '2:30' },
       { id: 'axial-t2-flair', label: 'Ax T2 FLAIR', shortName: 'Ax FLAIR', orientation: 'TRA', region: 'brain', estimatedTime: '3:10' },
-      { id: 'axial-t1-tse', label: 'Ax T1 TSE', shortName: 'Ax T1', orientation: 'TRA', region: 'brain', estimatedTime: '2:00' },
       { id: 'sagittal-t1-tse', label: 'Sag T1 TSE', shortName: 'Sag T1', orientation: 'SAG', region: 'brain', estimatedTime: '2:45' },
-      { id: 'coronal-t1-tse', label: 'Cor T1 TSE', shortName: 'Cor T1', orientation: 'COR', region: 'brain', estimatedTime: '2:15' },
       { id: 'axial-dwi', label: 'Ax DWI', shortName: 'Ax DWI', orientation: 'TRA', region: 'brain', estimatedTime: '1:30' },
-      { id: 'sagittal-3d-t1-mprage', label: '3D Sag T1 MPRAGE', shortName: '3D MPRAGE', orientation: 'SAG', region: 'brain', estimatedTime: '5:20' },
-      { id: 'axial-swi', label: 'Ax SWI', shortName: 'Ax SWI', orientation: 'TRA', region: 'brain', estimatedTime: '4:00' },
     ],
   },
   {

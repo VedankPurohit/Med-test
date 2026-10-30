@@ -42,6 +42,8 @@ type SingleTargetScore = {
   };
 };
 
+type ScoreFinding = PlannerScore["findings"][number];
+
 const relativeDiff = (a: number, b: number): number => Math.abs(a - b) / Math.max(Math.abs(b), 1);
 const scoreFromError = (error: number, tolerance: number): number => clamp(1 - error / tolerance, 0, 1);
 const round = (value: number, digits: number): number => {
@@ -169,23 +171,91 @@ const scoreAgainstTarget = (
   };
 };
 
-const buildFeedback = (score: SingleTargetScore): string[] => {
-  const issues: Array<{ score: number; text: string }> = [
-    { score: score.componentScores.position, text: "Re-center the prescription box on target anatomy." },
-    { score: score.componentScores.coverage, text: "Adjust coverage dimensions to match target anatomy span." },
-    { score: score.componentScores.angulation, text: "Correct slice angulation using anatomical landmarks." },
-    { score: score.componentScores.parameters, text: "Tune protocol parameters closer to target values." }
-  ];
+const formatParamTarget = (value: number, unit: string | undefined): string =>
+  unit ? `${value} ${unit}` : `${value}`;
 
-  const paramEntries = Object.entries(score.rawErrors.perParamRelative)
+const buildFindings = (protocol: ProtocolConfig, score: SingleTargetScore): ScoreFinding[] => {
+  const findings: ScoreFinding[] = [];
+
+  if (score.componentScores.position < 0.8) {
+    findings.push({
+      code: "coverage_off_center",
+      severity: "error",
+      title: "Off-center planning box",
+      message: "The prescription box is not centered on the intended brain anatomy.",
+      suggestion:
+        protocol.teaching?.planningHint ??
+        "Move the box closer to brain midline and scanner isocenter before rescoring."
+    });
+  }
+
+  if (score.componentScores.coverage < 0.8) {
+    findings.push({
+      code: "coverage_too_small",
+      severity: "error",
+      title: "Coverage mismatch",
+      message: "Current FOV or slice coverage does not span the full target anatomy.",
+      suggestion: "Increase coverage and confirm vertex-to-posterior-fossa coverage without drifting into the neck."
+    });
+  }
+
+  if (score.componentScores.angulation < 0.8) {
+    findings.push({
+      code: "angle_out_of_tolerance",
+      severity: "error",
+      title: "Angulation out of tolerance",
+      message: "Slice angulation is not aligned with the expected brain reference plane.",
+      suggestion:
+        protocol.teaching?.planningHint ??
+        "Rotate the slab to match the sequence-specific anatomical landmark."
+    });
+  }
+
+  const paramFindings = Object.entries(score.rawErrors.perParamRelative)
+    .filter(([, error]) => error > 0.12)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 2)
-    .map(([key]) => ({ score: 1 - clamp(score.rawErrors.perParamRelative[key], 0, 1), text: `Refine parameter ${key}.` }));
+    .map(([key]) => {
+      const spec = protocol.parameterSpecs.find((entry) => String(entry.key) === key);
+      const targetValue = score.target.params[key];
+      return {
+        code: "parameter_value_mismatch",
+        severity: "warning" as const,
+        title: `${spec?.label ?? key} needs adjustment`,
+        message: `${spec?.label ?? key} is away from the sequence target.`,
+        suggestion:
+          targetValue !== undefined
+            ? `Aim for ${formatParamTarget(targetValue, spec?.unit)} for this sequence.`
+            : "Refine the sequence parameter closer to the protocol target.",
+        relatedParameter: key
+      };
+    });
 
-  return [...issues, ...paramEntries]
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 3)
-    .map((entry) => entry.text);
+  findings.push(...paramFindings);
+
+  if (findings.length === 0) {
+    findings.push({
+      code: "planning_ready",
+      severity: "warning",
+      title: "Planning ready",
+      message: "Planning and parameters are within the current training tolerances.",
+      suggestion: "Accept this sequence and continue to the simulated scan."
+    });
+  }
+
+  return findings.slice(0, 4);
+};
+
+const buildFeedback = (protocol: ProtocolConfig, findings: ScoreFinding[], passed: boolean): string[] => {
+  if (passed) {
+    return [
+      "Planning accepted for this sequence.",
+      protocol.teaching?.purpose ?? "Planning is within the current training tolerances.",
+      "Run the sequence or continue to the next guided step."
+    ];
+  }
+
+  return findings.slice(0, 3).map((entry) => entry.message);
 };
 
 export const computeScore = (
@@ -213,6 +283,7 @@ export const computeScore = (
     best.componentScores.position >= gates.positionMin &&
     best.componentScores.coverage >= gates.coverageMin &&
     best.componentScores.angulation >= gates.angulationMin;
+  const findings = buildFindings(protocol, best);
 
   return {
     scoreSchemaVersion: 2,
@@ -224,7 +295,8 @@ export const computeScore = (
     matchedTargetKind: bestIndex === 0 ? "primary" : "accepted",
     finalScorePercent: finalPct,
     pass,
-    feedback: buildFeedback(best),
+    feedback: buildFeedback(protocol, findings, pass),
+    findings,
     componentScores: {
       positionPercent: Math.round(best.componentScores.position * 100),
       coveragePercent: Math.round(best.componentScores.coverage * 100),
