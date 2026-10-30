@@ -122,9 +122,151 @@ describe("scoring core", () => {
     expect(merged.target.rotation.rz).toBe(protocol.target.rotation.rz);
   });
 
+  it("returns planning_ready finding when score is perfect", () => {
+    const box: PlannerBox = {
+      center: deepClone(protocol.target.center),
+      size: deepClone(protocol.target.size),
+      rotation: deepClone(protocol.target.rotation)
+    };
+
+    const score = computeScore(protocol, box, deepClone(protocol.target.params), false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings![0]?.code).toBe("planning_ready");
+    expect(score.findings![0]?.severity).toBe("info");
+  });
+
+  it("returns error findings when score is bad", () => {
+    const badBox: PlannerBox = {
+      center: { x: 0.95, y: -0.95, z: 0.95 },
+      size: { x: 0.2, y: 1.6, z: 1.6 },
+      rotation: { rx: 40, ry: -40, rz: 40 }
+    };
+    const badParams = params(600, 20, 400, 3, 10, 4);
+
+    const score = computeScore(protocol, badBox, badParams, false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings!.length).toBeGreaterThan(0);
+    expect(score.findings!.some((f) => f.code === "position_off")).toBe(true);
+    expect(score.findings!.some((f) => f.severity === "error")).toBe(true);
+  });
+
+  it("flags physically impossible timing parameters", () => {
+    const box: PlannerBox = {
+      center: deepClone(protocol.target.center),
+      size: deepClone(protocol.target.size),
+      rotation: deepClone(protocol.target.rotation)
+    };
+
+    const impossibleParams = {
+      ...deepClone(protocol.target.params),
+      TR: 80,
+      TE: 120
+    };
+
+    const score = computeScore(protocol, box, impossibleParams, false, "brain");
+    expect(score.pass).toBe(false);
+    expect(score.findings?.some((finding) => finding.code === "timing_invalid_tr_te")).toBe(true);
+  });
+
+  it("flags inversion time that cannot fit inside TR", () => {
+    const irProtocol: ProtocolConfig = {
+      ...protocol,
+      target: {
+        ...protocol.target,
+        params: { ...protocol.target.params, TI: 2500 }
+      },
+      parameterSpecs: [
+        ...protocol.parameterSpecs,
+        { key: "TI", label: "TI", min: 0, step: 1, weight: 1 }
+      ]
+    };
+    const box: PlannerBox = {
+      center: deepClone(irProtocol.target.center),
+      size: deepClone(irProtocol.target.size),
+      rotation: deepClone(irProtocol.target.rotation)
+    };
+
+    const invalidParams = {
+      ...deepClone(irProtocol.target.params),
+      TR: 3000,
+      TI: 3200
+    };
+
+    const score = computeScore(irProtocol, box, invalidParams, false, "brain");
+    expect(score.pass).toBe(false);
+    expect(score.findings?.some((finding) => finding.code === "timing_invalid_ti")).toBe(true);
+  });
+
   it("deep clones nested objects", () => {
     const cloned = deepClone(protocol.target);
     cloned.center.x = 999;
     expect(protocol.target.center.x).toBe(0);
+  });
+
+  it("returns midline_off finding for sagittal protocol with off-center box", () => {
+    const sagProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t1_sagittal",
+      label: "Brain T1 Sagittal"
+    };
+    const offCenterBox: PlannerBox = {
+      center: { x: 0.12, y: 0, z: 0 },
+      size: deepClone(sagProtocol.target.size),
+      rotation: deepClone(sagProtocol.target.rotation)
+    };
+    const score = computeScore(sagProtocol, offCenterBox, deepClone(sagProtocol.target.params), false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings!.some((f) => f.code === "midline_off")).toBe(true);
+    const midline = score.findings!.find((f) => f.code === "midline_off")!;
+    expect(midline.severity).toBe("error");
+    expect(midline.suggestion).toContain("left");
+  });
+
+  it("does not produce midline_off for sagittal protocol when centered", () => {
+    const sagProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t1_sagittal",
+      label: "Brain T1 Sagittal"
+    };
+    const centeredBox: PlannerBox = {
+      center: { x: 0.02, y: 0, z: 0 },
+      size: deepClone(sagProtocol.target.size),
+      rotation: deepClone(sagProtocol.target.rotation)
+    };
+    const score = computeScore(sagProtocol, centeredBox, deepClone(sagProtocol.target.params), false, "brain");
+    expect(score.findings!.some((f) => f.code === "midline_off")).toBe(false);
+  });
+
+  it("returns symmetry_off finding for axial protocol with asymmetric coverage", () => {
+    const axProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t2_axial",
+      label: "Brain T2 Axial"
+    };
+    const asymBox: PlannerBox = {
+      center: { x: 0.1, y: 0, z: 0 },
+      size: deepClone(axProtocol.target.size),
+      rotation: deepClone(axProtocol.target.rotation)
+    };
+    const score = computeScore(axProtocol, asymBox, deepClone(axProtocol.target.params), false, "brain");
+    expect(score.findings).toBeDefined();
+    expect(score.findings!.some((f) => f.code === "symmetry_off")).toBe(true);
+    const sym = score.findings!.find((f) => f.code === "symmetry_off")!;
+    expect(sym.suggestion).toContain("equal left-right");
+  });
+
+  it("does not produce symmetry_off for non-axial protocols", () => {
+    const sagProtocol: ProtocolConfig = {
+      ...protocol,
+      id: "brain_t1_sagittal",
+      label: "Brain T1 Sagittal"
+    };
+    const offBox: PlannerBox = {
+      center: { x: 0.1, y: 0, z: 0 },
+      size: deepClone(sagProtocol.target.size),
+      rotation: deepClone(sagProtocol.target.rotation)
+    };
+    const score = computeScore(sagProtocol, offBox, deepClone(sagProtocol.target.params), false, "brain");
+    expect(score.findings!.some((f) => f.code === "symmetry_off")).toBe(false);
   });
 });

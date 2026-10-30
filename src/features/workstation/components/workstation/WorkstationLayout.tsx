@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import type { ViewType } from '@/features/workstation/types/mri';
 import { usePlannerBridge } from '@/features/workstation/hooks/usePlannerBridge';
@@ -15,6 +16,12 @@ import SurveyAnimation from './SurveyAnimation';
 import ConfirmationDialog from './ConfirmationDialog';
 import { MOCK_PATIENT } from '@/features/workstation/lib/mockData';
 import { ORIENTATION_LABELS } from '@/features/workstation/types/mri';
+import SequenceOrderPanel from '@/features/guidance/components/SequenceOrderPanel';
+import { GuidedPlanningOverlay } from '@/features/guidance/components/GuidedPlanningOverlay';
+import { GuidanceFlowOverlays } from '@/features/guidance/components/GuidanceFlowOverlays';
+import { useGuidanceStore } from '@/features/guidance/stores/useGuidanceStore';
+import { VIEW_CONFIG } from '@/features/planner/lib/geometry';
+import type { ViewId } from '@/features/planner/types/planner';
 
 const VIEWS: ViewType[] = ['sagittal', 'coronal', 'axial'];
 const VIEW_LABELS: Record<ViewType, string> = {
@@ -88,10 +95,7 @@ function BlackPanel({ view }: { view: ViewType }) {
 function PatientInfoSection() {
   return (
     <div className="p-3" style={{ borderBottom: '1px solid var(--chrome-border)' }}>
-      <div
-        className="text-[8px] uppercase tracking-[0.2em] mb-2"
-        style={{ color: 'var(--text-muted)' }}
-      >
+      <div className="panel-heading mb-2">
         Patient Information
       </div>
       <div className="space-y-1.5">
@@ -131,6 +135,20 @@ function PatientInfoSection() {
           <div className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Patient ID</div>
           <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
             {MOCK_PATIENT.id}
+          </div>
+        </div>
+        <div>
+          <div className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Study Type</div>
+          <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+            {MOCK_PATIENT.studyType}
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <div>
+            <div className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Contrast</div>
+            <div className="text-[10px]" style={{ color: MOCK_PATIENT.contrastRequired ? 'var(--fb-warn)' : 'var(--text-secondary)' }}>
+              {MOCK_PATIENT.contrastRequired ? `Yes — ${MOCK_PATIENT.contrastAgent}` : 'No'}
+            </div>
           </div>
         </div>
       </div>
@@ -208,13 +226,82 @@ function CanvasToolbar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge>
   );
 }
 
+/** Persistent protocol context shown during planning */
+function ProtocolContextBar({ bridge }: { bridge: ReturnType<typeof usePlannerBridge> }) {
+  const protocol = bridge.planner.currentProtocol;
+  if (!protocol) return null;
+
+  const params = bridge.planner.params ?? {};
+  const editableViews = (Object.entries(VIEW_CONFIG) as [ViewId, typeof VIEW_CONFIG[ViewId]][])
+    .filter(([, cfg]) => cfg.editable)
+    .map(([id]) => id.toUpperCase())
+    .join(' + ');
+
+  const slices = params.Slices ?? 0;
+  const thickness = params.SliceThickness ?? 0;
+
+  return (
+    <div
+      className="shrink-0 px-3 py-1"
+      style={{
+        background: 'var(--accent-blue-dim)',
+        borderBottom: '1px solid rgba(37,99,235,0.15)',
+      }}
+    >
+      <div className="flex items-center gap-2 text-[9px]">
+        <span className="font-semibold" style={{ color: 'var(--accent-blue)' }}>
+          {protocol.label}
+        </span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          TR={params.TR ?? '—'}ms &nbsp; TE={params.TE ?? '—'}ms &nbsp; FOV={params.FOV ?? '—'}mm &nbsp;
+          {slices}sl&times;{thickness}mm
+        </span>
+        <span className="ml-auto font-medium" style={{ color: 'rgba(87,255,241,0.7)' }}>
+          Plan on: {editableViews}
+        </span>
+      </div>
+      {protocol.teaching?.planningHint && (
+        <div className="text-[8px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+          {protocol.teaching.planningHint}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WorkstationLayout() {
   const phase = useWorkstationStore((s) => s.phase);
+  const startSurvey = useWorkstationStore((s) => s.startSurvey);
+  const addedProtocols = useWorkstationStore((s) => s.addedProtocols);
   const bridge = usePlannerBridge();
+  const orderConfirmed = useGuidanceStore((s) => s.orderConfirmed);
+  const setOrderConfirmed = useGuidanceStore((s) => s.setOrderConfirmed);
+
+  // Reset orderConfirmed when going back to early phases
+  useEffect(() => {
+    if (phase === 'region-select' || phase === 'exam-setup') {
+      setOrderConfirmed(false);
+    }
+  }, [phase, setOrderConfirmed]);
+
+  // Sequence-ordering step is currently disabled — auto-confirm and advance to survey
+  // for any number of protocols. (Re-enable by restoring the addedProtocols.length <= 1 guard.)
+  useEffect(() => {
+    if (phase === 'protocols-confirmed' && !orderConfirmed) {
+      setOrderConfirmed(true);
+      startSurvey();
+    }
+  }, [phase, orderConfirmed, setOrderConfirmed, startSurvey]);
 
   const showCanvasPanels = bridge.isActive;
   const showBlackPanels = (phase === 'survey-complete' || phase === 'protocol-active') && !showCanvasPanels;
   const showSurvey = phase === 'survey-running';
+  const showOrderPanel = phase === 'protocols-confirmed' && !orderConfirmed;
+
+  // Check if all protocols are completed (for completion overlay)
+  const allProtocolsCompleted = addedProtocols.length > 0 &&
+    addedProtocols.every((p) => p.status === 'completed');
+  const showCompletionOverlay = phase === 'protocol-active' && allProtocolsCompleted && !showCanvasPanels;
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden">
@@ -226,6 +313,7 @@ export default function WorkstationLayout() {
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Canvas toolbar (only when canvases are shown) */}
           {showCanvasPanels && <CanvasToolbar bridge={bridge} />}
+          {showCanvasPanels && <ProtocolContextBar bridge={bridge} />}
 
           {/* Image panels row */}
           <div
@@ -251,6 +339,35 @@ export default function WorkstationLayout() {
             )}
 
             {showSurvey && <SurveyAnimation />}
+            {showCanvasPanels && <GuidedPlanningOverlay />}
+            {showCompletionOverlay && (
+              <div
+                className="absolute inset-0 z-20 flex items-center justify-center animate-fade-in"
+                style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+              >
+                <div
+                  className="text-center px-8 py-6 rounded-lg"
+                  style={{
+                    background: 'var(--chrome-surface)',
+                    border: '1px solid rgba(63, 185, 80, 0.3)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  <div
+                    className="text-[13px] font-semibold mb-2"
+                    style={{ color: 'var(--fb-good)' }}
+                  >
+                    All protocols planned
+                  </div>
+                  <div
+                    className="text-[10px]"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Review your results in the Feedback tab, then Submit Session
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <ProtocolBrowser bridge={bridge} />
@@ -269,7 +386,7 @@ export default function WorkstationLayout() {
             <PatientInfoSection />
           </div>
           <div
-            className="shrink-0"
+            className="shrink-0 flex flex-col overflow-hidden"
             style={{
               height: 220,
               borderTop: '1px solid var(--chrome-border)',
@@ -282,6 +399,14 @@ export default function WorkstationLayout() {
 
       <ScannerStatusBar />
       <ConfirmationDialog />
+      <SequenceOrderPanel
+        open={showOrderPanel}
+        onConfirm={() => {
+          setOrderConfirmed(true);
+          startSurvey();
+        }}
+      />
+      {showCanvasPanels && <GuidanceFlowOverlays bridge={bridge} />}
     </div>
   );
 }

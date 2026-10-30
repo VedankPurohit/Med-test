@@ -1,8 +1,8 @@
 /** Body region for protocol grouping */
-export type RegionId = 'brain' | 'spine';
+export type RegionId = 'brain' | 'spine' | 'extremity';
 
 /** Anatomical case (sub-region) used by the planner engine */
-export type CaseId = 'brain' | 'cspine' | 'tspine' | 'lspine';
+export type CaseId = 'brain' | 'cspine' | 'tspine' | 'lspine' | 'knee';
 
 /** Anatomical view type */
 export type ViewType = 'sagittal' | 'coronal' | 'axial';

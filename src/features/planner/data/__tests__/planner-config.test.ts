@@ -4,15 +4,17 @@ import { BRAIN_PROTOCOLS } from "@/features/planner/data/protocols/brain";
 import { CSPINE_PROTOCOLS } from "@/features/planner/data/protocols/cspine";
 import { TSPINE_PROTOCOLS } from "@/features/planner/data/protocols/tspine";
 import { LSPINE_PROTOCOLS } from "@/features/planner/data/protocols/lspine";
+import { KNEE_PROTOCOLS } from "@/features/planner/data/protocols/knee";
 import { validateProtocolConfig } from "@/features/planner/lib/validation";
 
 describe("planner config", () => {
   it("maps case IDs to case configs", () => {
-    expect(CASES.length).toBe(4);
+    expect(CASES.length).toBe(5);
     expect(CASE_MAP.brain.id).toBe("brain");
     expect(CASE_MAP.cspine.id).toBe("cspine");
     expect(CASE_MAP.tspine.id).toBe("tspine");
     expect(CASE_MAP.lspine.id).toBe("lspine");
+    expect(CASE_MAP.knee.id).toBe("knee");
   });
 
   it("wires modular protocol lists into cases", () => {
@@ -20,6 +22,7 @@ describe("planner config", () => {
     expect(CASE_MAP.cspine.protocols).toBe(CSPINE_PROTOCOLS);
     expect(CASE_MAP.tspine.protocols).toBe(TSPINE_PROTOCOLS);
     expect(CASE_MAP.lspine.protocols).toBe(LSPINE_PROTOCOLS);
+    expect(CASE_MAP.knee.protocols).toBe(KNEE_PROTOCOLS);
   });
 
   it("uses default localizer paths for each case", () => {
@@ -29,6 +32,7 @@ describe("planner config", () => {
     expect(CASE_MAP.cspine.localizerSets[0].views.axial).toBe("/localizers/cspine/default/axial.png");
     expect(CASE_MAP.tspine.localizerSets[0].views.axial).toBe("/localizers/tspine/default/axial.png");
     expect(CASE_MAP.lspine.localizerSets[0].views.axial).toBe("/localizers/lspine/default/axial.png");
+    expect(CASE_MAP.knee.localizerSets[0].views.axial).toBe("/localizers/knee/default/axial.png");
   });
 
   it("validates all protocol definitions", () => {

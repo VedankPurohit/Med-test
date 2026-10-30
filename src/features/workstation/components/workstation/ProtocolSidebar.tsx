@@ -2,14 +2,7 @@
 
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
 import { MOCK_PATIENT, MOCK_EXAM } from '@/features/workstation/lib/mockData';
-import type { ProtocolStatus } from '@/features/workstation/types/workstation';
-
-const STATUS_COLORS: Record<ProtocolStatus, string> = {
-  pending: 'var(--text-muted)',
-  active: 'var(--plan-orange)',
-  completed: 'var(--fb-good)',
-  skipped: 'var(--fb-neutral)',
-};
+import { StatusIcon } from '@/features/guidance/components/StatusIcon';
 
 export default function ProtocolSidebar() {
   const phase = useWorkstationStore((s) => s.phase);
@@ -31,13 +24,10 @@ export default function ProtocolSidebar() {
       }}
     >
       <div
-        className="px-3 py-2 shrink-0"
+        className="px-3 py-2.5 shrink-0"
         style={{ borderBottom: '1px solid var(--chrome-border)' }}
       >
-        <div
-          className="text-[8px] uppercase tracking-[0.2em] mb-1"
-          style={{ color: 'var(--text-muted)' }}
-        >
+        <div className="panel-heading mb-1">
           Scan Protocols
         </div>
         <div className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
@@ -45,7 +35,7 @@ export default function ProtocolSidebar() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-1">
+      <div className="flex-1 overflow-y-auto py-1.5">
         {protocols.length === 0 ? (
           <div className="px-3 py-4 text-center">
             <div className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
@@ -61,15 +51,13 @@ export default function ProtocolSidebar() {
             return (
               <div
                 key={protocol.protocolId}
-                className="flex items-center gap-2 px-2 py-1.5 transition-colors group"
+                className="group flex items-stretch"
                 style={{
-                  cursor: canActivate ? 'pointer' : 'default',
                   background: isActive ? 'var(--sidebar-row-active)' : 'transparent',
                   borderLeft: isActive
                     ? '2px solid var(--accent-blue)'
                     : '2px solid transparent',
                 }}
-                onClick={() => canActivate && activateProtocol(index)}
                 onMouseEnter={(e) => {
                   if (!isActive) e.currentTarget.style.background = 'var(--sidebar-row-hover)';
                 }}
@@ -77,50 +65,59 @@ export default function ProtocolSidebar() {
                   if (!isActive) e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{
-                    background: STATUS_COLORS[protocol.status],
-                    boxShadow: protocol.status === 'active'
-                      ? '0 0 6px var(--plan-orange)'
-                      : 'none',
-                  }}
-                />
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-2 px-2 py-1.5 text-left transition-colors"
+                  style={{ cursor: canActivate ? 'pointer' : 'default' }}
+                  onClick={() => canActivate && activateProtocol(index)}
+                >
+                  <StatusIcon status={protocol.status} size={8} />
 
-                <div className="flex-1 min-w-0">
-                  <div
-                    className="text-[10px] truncate"
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="text-[10px] truncate"
+                      style={{
+                        color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                        fontWeight: isActive ? 500 : 400,
+                      }}
+                    >
+                      {protocol.shortName}
+                    </div>
+                    {protocol.estimatedTime && (
+                      <div
+                        className="text-[8px] truncate"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        {protocol.estimatedTime}
+                      </div>
+                    )}
+                  </div>
+
+                  <span
+                    className="text-[7px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0"
                     style={{
-                      color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                      fontWeight: isActive ? 500 : 400,
+                      background: isActive ? 'var(--accent-blue-dim)' : 'var(--chrome-surface-raised)',
+                      color: isActive ? 'var(--accent-blue)' : 'var(--text-muted)',
                     }}
                   >
-                    {protocol.shortName}
-                  </div>
-                </div>
+                    {protocol.orientation}
+                  </span>
+                </button>
 
-                <span
-                  className="text-[7px] px-1 py-0.5 rounded uppercase tracking-wide shrink-0"
-                  style={{
-                    background: 'var(--chrome-surface-raised)',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  {protocol.orientation}
-                </span>
-
-                {canRemove && (
+                {canRemove ? (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       removeProtocol(protocol.protocolId);
                     }}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] transition-opacity cursor-pointer"
+                    className="px-2 text-[10px] opacity-0 transition-opacity cursor-pointer group-hover:opacity-100"
                     style={{ color: 'var(--fb-bad)' }}
+                    aria-label={`Remove ${protocol.shortName}`}
                   >
                     &#x2715;
                   </button>
-                )}
+                ) : null}
               </div>
             );
           })
@@ -128,16 +125,13 @@ export default function ProtocolSidebar() {
       </div>
 
       <div
-        className="px-3 py-2 shrink-0"
+        className="px-3 py-2.5 shrink-0"
         style={{
           borderTop: '1px solid var(--chrome-border)',
           background: 'var(--chrome-surface)',
         }}
       >
-        <div
-          className="text-[8px] uppercase tracking-[0.2em] mb-1"
-          style={{ color: 'var(--text-muted)' }}
-        >
+        <div className="panel-heading mb-1">
           Patient
         </div>
         <div className="text-[10px] font-medium" style={{ color: 'var(--text-primary)' }}>

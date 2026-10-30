@@ -2,6 +2,7 @@ import { BRAIN_PROTOCOLS } from "@/features/planner/data/protocols/brain";
 import { CSPINE_PROTOCOLS } from "@/features/planner/data/protocols/cspine";
 import { TSPINE_PROTOCOLS } from "@/features/planner/data/protocols/tspine";
 import { LSPINE_PROTOCOLS } from "@/features/planner/data/protocols/lspine";
+import { KNEE_PROTOCOLS } from "@/features/planner/data/protocols/knee";
 import { validateProtocolConfig } from "@/features/planner/lib/validation";
 import { CaseConfig, CaseId, ViewId } from "@/features/planner/types/planner";
 
@@ -32,7 +33,11 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("brain", "clinical-low")
       }
     ],
-    protocols: BRAIN_PROTOCOLS
+    protocols: BRAIN_PROTOCOLS,
+    // Real single-patient T1 (Chris Rorden / niivue-images, CC BY-NC 4.0).
+    // Replaces the MNI152 averaged atlas template, which looked synthetic due to
+    // population averaging blurring out individual anatomical variation.
+    volumeUrl: "/volumes/brain/brain_t1.nii.gz"
   },
   {
     id: "cspine",
@@ -44,7 +49,8 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("cspine", "default")
       }
     ],
-    protocols: CSPINE_PROTOCOLS
+    protocols: CSPINE_PROTOCOLS,
+    volumeUrl: "/volumes/cspine/cspine_t2.nii.gz"
   },
   {
     id: "tspine",
@@ -56,7 +62,8 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("tspine", "default")
       }
     ],
-    protocols: TSPINE_PROTOCOLS
+    protocols: TSPINE_PROTOCOLS,
+    volumeUrl: "/volumes/tspine/tspine_t2.nii.gz"
   },
   {
     id: "lspine",
@@ -68,7 +75,21 @@ export const CASES: CaseConfig[] = [
         views: localizerViews("lspine", "default")
       }
     ],
-    protocols: LSPINE_PROTOCOLS
+    protocols: LSPINE_PROTOCOLS,
+    volumeUrl: "/volumes/lspine/lspine_t2.nii.gz"
+  },
+  {
+    id: "knee",
+    label: "Knee",
+    localizerSets: [
+      {
+        id: "default",
+        label: "Knee Default",
+        views: localizerViews("knee", "default")
+      }
+    ],
+    protocols: KNEE_PROTOCOLS,
+    volumeUrl: "/volumes/knee/knee_t2.nii.gz"
   }
 ];
 

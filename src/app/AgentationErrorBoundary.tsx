@@ -21,9 +21,6 @@ export default class AgentationErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("agentation.enabled", "0");
-    }
     // Keep the workstation usable even if Agentation crashes.
     console.error("Agentation disabled after runtime error:", error, errorInfo);
   }

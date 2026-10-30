@@ -36,7 +36,8 @@ export const createEmptyUploadMap = (): UploadMap => ({
   brain: { axial: null, sagittal: null, coronal: null },
   cspine: { axial: null, sagittal: null, coronal: null },
   tspine: { axial: null, sagittal: null, coronal: null },
-  lspine: { axial: null, sagittal: null, coronal: null }
+  lspine: { axial: null, sagittal: null, coronal: null },
+  knee: { axial: null, sagittal: null, coronal: null }
 });
 
 export const createEmptyCalibrations = (): CalibrationMap => ({});

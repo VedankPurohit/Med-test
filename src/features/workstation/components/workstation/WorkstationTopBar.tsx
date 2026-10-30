@@ -2,14 +2,67 @@
 
 import { useEffect, useState } from 'react';
 import { useWorkstationStore } from '@/features/workstation/stores/useWorkstationStore';
+import { useGuidanceStore } from '@/features/guidance/stores/useGuidanceStore';
 import { MOCK_PATIENT } from '@/features/workstation/lib/mockData';
 import type { CaseId } from '@/features/workstation/types/mri';
+
+function TipsToggle() {
+  const tipsEnabled = useGuidanceStore((s) => s.tipsEnabled);
+  const toggleTips = useGuidanceStore((s) => s.toggleTips);
+  return (
+    <button
+      onClick={toggleTips}
+      className="btn-sm text-[9px] mr-2"
+      style={{
+        background: tipsEnabled ? 'rgba(37,99,235,0.12)' : 'transparent',
+        color: tipsEnabled ? 'var(--accent-blue)' : 'var(--text-muted)',
+        border: tipsEnabled ? '1px solid rgba(37,99,235,0.3)' : '1px solid var(--chrome-border)',
+      }}
+    >
+      {tipsEnabled ? 'Tips ON' : 'Tips OFF'}
+    </button>
+  );
+}
+
+const STRATEGY_OPTIONS = [
+  { id: 'popup', label: 'Popup' },
+  { id: 'inline', label: 'Inline' },
+] as const;
+
+function TeachingStrategySelector() {
+  const activeStrategy = useGuidanceStore((s) => s.activeTeachingStrategy);
+  const setStrategy = useGuidanceStore((s) => s.setTeachingStrategy);
+  const tipsEnabled = useGuidanceStore((s) => s.tipsEnabled);
+
+  if (!tipsEnabled) return null;
+
+  return (
+    <select
+      value={activeStrategy}
+      onChange={(e) => setStrategy(e.target.value)}
+      className="text-[8px] mr-2 rounded cursor-pointer"
+      style={{
+        background: 'var(--chrome-surface-raised)',
+        color: 'var(--text-secondary)',
+        border: '1px solid var(--chrome-border)',
+        padding: '2px 4px',
+        outline: 'none',
+      }}
+      title="Teaching mode"
+    >
+      {STRATEGY_OPTIONS.map((opt) => (
+        <option key={opt.id} value={opt.id}>{opt.label} Teaching</option>
+      ))}
+    </select>
+  );
+}
 
 const CASE_LABELS: Record<CaseId, string> = {
   brain: 'Brain MRI',
   cspine: 'Cervical Spine MRI',
   tspine: 'Thoracic Spine MRI',
   lspine: 'Lumbar Spine MRI',
+  knee: 'Knee',
 };
 
 function formatTime(ms: number): string {
@@ -101,10 +154,13 @@ export default function WorkstationTopBar() {
 
       <div className="flex-1" />
 
+      <TipsToggle />
+      <TeachingStrategySelector />
+
       <div className="flex items-center gap-2">
         <button
           onClick={goBack}
-          className="px-2 py-1 rounded text-[9px] transition-colors cursor-pointer"
+          className="btn-sm text-[9px]"
           style={{
             background: 'transparent',
             border: '1px solid transparent',
@@ -127,7 +183,7 @@ export default function WorkstationTopBar() {
         {phase !== 'exam-setup' && (
           <button
             onClick={resetExam}
-            className="px-2 py-1 rounded text-[9px] transition-colors cursor-pointer"
+            className="btn-sm text-[9px]"
             style={{
               background: 'transparent',
               border: '1px solid transparent',
@@ -152,7 +208,7 @@ export default function WorkstationTopBar() {
           <button
             onClick={confirmProtocols}
             disabled={!canConfirm}
-            className="px-3 py-1 rounded text-[9px] transition-colors"
+            className="btn-sm text-[9px] font-medium"
             style={{
               background: canConfirm ? 'var(--accent-blue-dim)' : 'transparent',
               border: `1px solid ${canConfirm ? 'rgba(37, 99, 235, 0.3)' : 'var(--chrome-border)'}`,
@@ -169,7 +225,7 @@ export default function WorkstationTopBar() {
           <button
             onClick={startSurvey}
             disabled={!canSurvey || isSurveying}
-            className="px-3 py-1 rounded text-[9px] font-medium transition-colors"
+            className="btn-sm btn-primary text-[9px] font-medium"
             style={{
               background: canSurvey ? 'var(--accent-blue)' : 'var(--chrome-surface-raised)',
               border: `1px solid ${canSurvey ? 'var(--accent-blue)' : 'var(--chrome-border)'}`,

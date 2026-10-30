@@ -11,3 +11,6 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 *.tsbuildinfo
+test-results/
+test-screenshots/
+.gstack/
